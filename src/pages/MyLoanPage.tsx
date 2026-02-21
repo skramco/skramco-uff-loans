@@ -386,34 +386,78 @@ export default function MyLoanPage() {
 function OverviewContent({ hasVesta, vestaLoan, pi, ld, pr, emp, sbConditions, openConditions, clearedConditions }: any) {
   return (
     <div className="space-y-6">
-      {/* Row 1: Payment / Rate / LO (Vesta) OR App Summary / LO placeholder */}
-      {hasVesta ? (
-        <div className="grid lg:grid-cols-3 gap-6">
+      {/* Row 1: Monthly Payment / Rate & Loan Details / Loan Officer — same layout for both paths */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Card 1: Monthly Payment */}
+        {hasVesta ? (
           <MonthlyPayment loan={vestaLoan} />
-          <RateDetails loan={vestaLoan} />
-          <LoanOfficerCard loan={vestaLoan} />
-        </div>
-      ) : (
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Application Summary */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Application Summary</h3>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <SummaryCard icon={User} label="Borrower" title={[pi.firstName, pi.lastName].filter(Boolean).join(' ') || 'N/A'} sub1={pi.email} sub2={pi.phone} />
-              <SummaryCard icon={DollarSign} label="Loan" title={fmtCurrency(ld.loanAmount) || 'N/A'} sub1={[ld.loanPurpose, ld.loanType].filter(Boolean).join(' • ')} />
-              {(pr.address || pr.city) && (
-                <SummaryCard icon={MapPin} label="Property" title={pr.address || [pr.city, pr.state].filter(Boolean).join(', ')}
-                  sub1={pr.propertyValue ? `Value: ${fmtCurrency(pr.propertyValue)}` : undefined} sub2={pr.propertyType} />
-              )}
-              {emp.employerName && (
-                <SummaryCard icon={Briefcase} label="Employment" title={emp.employerName}
-                  sub1={emp.position} sub2={emp.totalMonthlyIncome ? `${fmtCurrency(emp.totalMonthlyIncome)}/mo` : undefined} />
-              )}
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Monthly Payment</h3>
+            <p className="text-sm text-gray-500 mb-6">Estimated total housing expense</p>
+            <div className="text-center mb-6">
+              <p className="text-4xl font-bold text-gray-300">—</p>
+              <p className="text-sm text-gray-400 mt-1">per month</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <Clock className="w-5 h-5 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-600 font-medium">Being Calculated</p>
+              <p className="text-xs text-gray-400 mt-1">Your loan officer will finalize your payment estimate based on current rates and your loan details.</p>
             </div>
           </div>
+        )}
 
-          {/* LO Placeholder */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        {/* Card 2: Rate & Loan Details */}
+        {hasVesta ? (
+          <RateDetails loan={vestaLoan} />
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Rate & Loan Details</h3>
+            <p className="text-sm text-gray-500 mb-6">Your loan terms and product info</p>
+            <div className="space-y-3">
+              {ld.loanAmount && (
+                <div className="flex items-start justify-between py-2 border-b border-gray-50">
+                  <span className="text-sm text-gray-500">Loan Amount</span>
+                  <span className="text-sm font-medium text-gray-900">{fmtCurrency(ld.loanAmount)}</span>
+                </div>
+              )}
+              {ld.loanType && (
+                <div className="flex items-start justify-between py-2 border-b border-gray-50">
+                  <span className="text-sm text-gray-500">Loan Type</span>
+                  <span className="text-sm font-medium text-gray-900">{ld.loanType}</span>
+                </div>
+              )}
+              {ld.loanPurpose && (
+                <div className="flex items-start justify-between py-2 border-b border-gray-50">
+                  <span className="text-sm text-gray-500">Purpose</span>
+                  <span className="text-sm font-medium text-gray-900">{ld.loanPurpose}</span>
+                </div>
+              )}
+              {ld.downPayment && (
+                <div className="flex items-start justify-between py-2 border-b border-gray-50">
+                  <span className="text-sm text-gray-500">Down Payment</span>
+                  <span className="text-sm font-medium text-gray-900">{fmtCurrency(ld.downPayment)}</span>
+                </div>
+              )}
+              {pr.propertyValue && (
+                <div className="flex items-start justify-between py-2 border-b border-gray-50">
+                  <span className="text-sm text-gray-500">Property Value</span>
+                  <span className="text-sm font-medium text-gray-900">{fmtCurrency(pr.propertyValue)}</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-4 bg-gray-50 rounded-lg px-4 py-3 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <p className="text-xs text-gray-500">Rate and product details will appear once your loan officer locks your rate.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Card 3: Loan Officer */}
+        {hasVesta ? (
+          <LoanOfficerCard loan={vestaLoan} />
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-5">Your Loan Officer</h3>
             <div className="flex items-center gap-4 mb-5">
               <div className="w-14 h-14 rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
@@ -442,6 +486,25 @@ function OverviewContent({ hasVesta, vestaLoan, pi, ld, pr, emp, sbConditions, o
               <Shield className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-gray-400 leading-relaxed">Your information is encrypted with bank-level security.</p>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Application snapshot — Supabase only (shows borrower/property/employment at a glance) */}
+      {!hasVesta && (pi.firstName || pr.address || emp.employerName) && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Application Snapshot</h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <SummaryCard icon={User} label="Borrower" title={[pi.firstName, pi.lastName].filter(Boolean).join(' ') || 'N/A'} sub1={pi.email} sub2={pi.phone} />
+            <SummaryCard icon={DollarSign} label="Loan" title={fmtCurrency(ld.loanAmount) || 'N/A'} sub1={[ld.loanPurpose, ld.loanType].filter(Boolean).join(' • ')} />
+            {(pr.address || pr.city) && (
+              <SummaryCard icon={MapPin} label="Property" title={pr.address || [pr.city, pr.state].filter(Boolean).join(', ')}
+                sub1={pr.propertyValue ? `Value: ${fmtCurrency(pr.propertyValue)}` : undefined} sub2={pr.propertyType} />
+            )}
+            {emp.employerName && (
+              <SummaryCard icon={Briefcase} label="Employment" title={emp.employerName}
+                sub1={emp.position} sub2={emp.totalMonthlyIncome ? `${fmtCurrency(emp.totalMonthlyIncome)}/mo` : undefined} />
+            )}
           </div>
         </div>
       )}
@@ -480,18 +543,27 @@ function OverviewContent({ hasVesta, vestaLoan, pi, ld, pr, emp, sbConditions, o
         )}
       </div>
 
-      {/* What to Expect */}
-      {!hasVesta && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">What to Expect</h3>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <ExpectCard icon={Phone} color="red" title="Phone Call" desc="Your loan officer will call to introduce themselves and discuss your application." />
-            <ExpectCard icon={Upload} color="red" title="Document Requests" desc="We'll send a personalized checklist of documents needed. Upload them right here." />
-            <ExpectCard icon={Mail} color="red" title="Regular Updates" desc="You'll receive email and text updates at every stage. No guesswork." />
-            <ExpectCard icon={Home} color="green" title="Closing Day" desc="We'll guide you through every step of closing. Typical timeline: 20-30 days." />
-          </div>
+      {/* What to Expect — shown for both paths */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{hasVesta ? 'Next Steps' : 'What to Expect'}</h3>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {hasVesta ? (
+            <>
+              <ExpectCard icon={ClipboardList} color="red" title="Review Conditions" desc="Check the Conditions tab for any items that need your attention or documents to upload." />
+              <ExpectCard icon={Upload} color="red" title="Upload Documents" desc="Submit any requested documents directly through the Conditions tab — fast and secure." />
+              <ExpectCard icon={Mail} color="red" title="Stay in Touch" desc="Your loan officer will keep you updated. Reach out anytime with questions." />
+              <ExpectCard icon={Home} color="green" title="Closing Day" desc="Once all conditions are cleared, your closing will be scheduled. Almost there!" />
+            </>
+          ) : (
+            <>
+              <ExpectCard icon={Phone} color="red" title="Phone Call" desc="Your loan officer will call to introduce themselves and discuss your application." />
+              <ExpectCard icon={Upload} color="red" title="Document Requests" desc="We'll send a personalized checklist of documents needed. Upload them right here." />
+              <ExpectCard icon={Mail} color="red" title="Regular Updates" desc="You'll receive email and text updates at every stage. No guesswork." />
+              <ExpectCard icon={Home} color="green" title="Closing Day" desc="We'll guide you through every step of closing. Typical timeline: 20-30 days." />
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
