@@ -173,7 +173,7 @@ function LoanConditionsContent({ loanId }: LoanConditionsContentProps) {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
             <p className="text-gray-600 mb-6">{error || 'Loan not found'}</p>
             <a
-              href="/dashboard"
+              href="/my-loan"
               className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700"
             >
               Back to Dashboard

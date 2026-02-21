@@ -71,25 +71,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signUp(email: string, password: string, firstName: string, lastName: string) {
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
-    });
-
-    if (!error && data.user) {
-      const { error: profileError } = await supabase
-        .from('borrower_profiles')
-        .insert({
-          id: data.user.id,
+      options: {
+        data: {
           first_name: firstName,
           last_name: lastName,
-          email: email,
-        });
-
-      if (profileError) {
-        return { error: profileError };
-      }
-    }
+        },
+        emailRedirectTo: `${window.location.origin}/apply`,
+      },
+    });
 
     return { error };
   }

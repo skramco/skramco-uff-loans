@@ -38,6 +38,7 @@ export default function DeclarationsSection({ data, onChange, fullFormData, disa
   const emp = fullFormData.employment || {};
   const prop = fullFormData.property || {};
   const ld = fullFormData.loanDetails || {};
+  const isRefi = ld.loanPurpose === 'Refinance' || ld.loanPurpose === 'Cash-Out Refinance';
 
   return (
     <div className="space-y-6">
@@ -80,9 +81,14 @@ export default function DeclarationsSection({ data, onChange, fullFormData, disa
           title="Loan Details"
           items={[
             { label: 'Purpose', value: ld.loanPurpose || '' },
-            { label: 'Amount', value: ld.loanAmount ? `$${ld.loanAmount.toLocaleString()}` : '' },
+            { label: isRefi ? 'New Loan Amount' : 'Loan Amount', value: ld.loanAmount ? `$${ld.loanAmount.toLocaleString()}` : '' },
             { label: 'Type', value: ld.loanType || '' },
-            { label: 'Down Payment', value: ld.downPayment ? `$${ld.downPayment.toLocaleString()}` : '' },
+            ...(!isRefi ? [{ label: 'Down Payment', value: ld.downPayment ? `$${ld.downPayment.toLocaleString()}` : '' }] : []),
+            ...(isRefi ? [
+              { label: 'Current Balance', value: ld.currentMortgageBalance ? `$${ld.currentMortgageBalance.toLocaleString()}` : '' },
+              { label: 'Current Rate', value: ld.currentInterestRate ? `${ld.currentInterestRate}%` : '' },
+            ] : []),
+            ...(ld.loanPurpose === 'Cash-Out Refinance' && ld.cashOutAmount ? [{ label: 'Cash-Out', value: `$${ld.cashOutAmount.toLocaleString()}` }] : []),
           ]}
         />
       </div>
@@ -131,12 +137,14 @@ export default function DeclarationsSection({ data, onChange, fullFormData, disa
             label="Are you obligated to pay alimony, child support, or separate maintenance?"
             disabled={disabled}
           />
-          <CheckboxInput
-            checked={data.downPaymentBorrowed || false}
-            onChange={(v) => onChange('downPaymentBorrowed', v)}
-            label="Is any part of the down payment borrowed?"
-            disabled={disabled}
-          />
+          {!isRefi && (
+            <CheckboxInput
+              checked={data.downPaymentBorrowed || false}
+              onChange={(v) => onChange('downPaymentBorrowed', v)}
+              label="Is any part of the down payment borrowed?"
+              disabled={disabled}
+            />
+          )}
         </div>
       </div>
 

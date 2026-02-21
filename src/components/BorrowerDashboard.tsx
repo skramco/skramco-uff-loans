@@ -66,7 +66,7 @@ function VestaDashboard() {
               <div className="w-9 h-9 bg-gradient-to-br from-red-600 to-red-700 rounded-lg flex items-center justify-center">
                 <Home className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-lg font-bold text-gray-900 hidden sm:block">Borrower Portal</h1>
+              <h1 className="text-lg font-bold text-gray-900 hidden sm:block">Loan Command Center</h1>
             </div>
 
             <div className="flex items-center gap-2 sm:gap-4">
@@ -216,7 +216,7 @@ function SupabaseDashboard() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
               <Home className="w-6 h-6 text-red-600" />
-              <h1 className="text-xl font-bold text-gray-900">Borrower Portal</h1>
+              <h1 className="text-xl font-bold text-gray-900">Loan Command Center</h1>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-gray-700">

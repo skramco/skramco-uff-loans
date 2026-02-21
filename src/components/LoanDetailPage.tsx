@@ -93,7 +93,7 @@ function LoanDetailContent({ loanId }: LoanDetailContentProps) {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
             <p className="text-gray-600 mb-6">{error || 'Loan not found'}</p>
             <a
-              href="/dashboard"
+              href="/my-loan"
               className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700"
             >
               Back to Dashboard
@@ -114,7 +114,7 @@ function LoanDetailContent({ loanId }: LoanDetailContentProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              <a href="/dashboard" className="text-gray-600 hover:text-gray-900">
+              <a href="/my-loan" className="text-gray-600 hover:text-gray-900">
                 <ArrowLeft className="w-6 h-6" />
               </a>
               <Home className="w-6 h-6 text-red-600" />

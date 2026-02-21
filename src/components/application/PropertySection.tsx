@@ -1,20 +1,27 @@
 import type { PropertySection as PropertyData } from '../../types';
 import type { ValidationErrors } from '../../hooks/useApplicationForm';
-import FormField, { TextInput, NumberInput, SelectInput, CheckboxInput } from './FormField';
+import FormField, { TextInput, NumberInput, SelectInput, CheckboxInput, ZipInput, CurrencyInput, UFF_LICENSED_STATES } from './FormField';
 
 interface Props {
   data: PropertyData;
   errors: ValidationErrors;
   onChange: (field: string, value: any) => void;
+  loanPurpose?: string;
   disabled?: boolean;
 }
 
-export default function PropertySection({ data, errors, onChange, disabled }: Props) {
+export default function PropertySection({ data, errors, onChange, loanPurpose, disabled }: Props) {
+  const isRefi = loanPurpose === 'Refinance' || loanPurpose === 'Cash-Out Refinance';
+
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-1">Property Information</h3>
-        <p className="text-sm text-gray-500">Details about the property you are purchasing or refinancing</p>
+        <p className="text-sm text-gray-500">
+          {isRefi
+            ? 'Details about the property you are refinancing'
+            : 'Details about the property you are purchasing'}
+        </p>
       </div>
 
       <FormField label="Property Address" required error={errors.address}>
@@ -38,21 +45,19 @@ export default function PropertySection({ data, errors, onChange, disabled }: Pr
           />
         </FormField>
         <FormField label="State" required error={errors.state}>
-          <TextInput
+          <SelectInput
             value={data.state || ''}
             onChange={(v) => onChange('state', v)}
-            placeholder="CA"
-            maxLength={2}
+            placeholder="Select..."
             disabled={disabled}
             error={!!errors.state}
+            options={UFF_LICENSED_STATES}
           />
         </FormField>
         <FormField label="ZIP" required error={errors.zip}>
-          <TextInput
+          <ZipInput
             value={data.zip || ''}
             onChange={(v) => onChange('zip', v)}
-            placeholder="12345"
-            maxLength={10}
             disabled={disabled}
             error={!!errors.zip}
           />
@@ -68,12 +73,10 @@ export default function PropertySection({ data, errors, onChange, disabled }: Pr
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField label="Estimated Property Value" required error={errors.propertyValue}>
-          <NumberInput
+        <FormField label={isRefi ? "Estimated Current Value" : "Estimated Property Value"} required error={errors.propertyValue}>
+          <CurrencyInput
             value={data.propertyValue}
             onChange={(v) => onChange('propertyValue', v)}
-            prefix="$"
-            placeholder="0"
             disabled={disabled}
             error={!!errors.propertyValue}
           />

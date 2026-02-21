@@ -102,6 +102,7 @@ export default function DirectMode({
             data={sectionData as any}
             errors={errors}
             onChange={(f, v) => onUpdateSection('property', f, v)}
+            loanPurpose={formData.loanDetails?.loanPurpose}
             disabled={disabled}
           />
         );
@@ -134,10 +135,10 @@ export default function DirectMode({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+      <div className="flex items-center justify-end gap-4 mb-6">
+        <div className="flex items-center gap-2 text-xs min-h-[20px]">
           {saving && (
-            <span className="flex items-center gap-1 text-red-600">
+            <span className="flex items-center gap-1 text-gray-400">
               <Loader className="w-3 h-3 animate-spin" />
               Saving...
             </span>

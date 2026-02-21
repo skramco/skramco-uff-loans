@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserPlus, Mail, Lock, User, AlertCircle, CheckCircle } from 'lucide-react';
+import ComplianceFooter from './layout/ComplianceFooter';
 
 export default function RegisterPage() {
   const [firstName, setFirstName] = useState('');
@@ -16,7 +17,7 @@ export default function RegisterPage() {
   useEffect(() => {
     if (user) {
       const leadData = localStorage.getItem('uff_lead');
-      window.location.href = leadData ? '/apply' : '/dashboard';
+      window.location.href = leadData ? '/apply' : '/my-loan';
     }
   }, [user]);
 
@@ -53,7 +54,7 @@ export default function RegisterPage() {
       setLoading(false);
       setTimeout(() => {
         const leadData = localStorage.getItem('uff_lead');
-      window.location.href = leadData ? '/apply' : '/dashboard';
+      window.location.href = leadData ? '/apply' : '/my-loan';
       }, 2000);
     }
   }
@@ -75,7 +76,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
+      <div className="flex-1 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
@@ -83,7 +85,7 @@ export default function RegisterPage() {
               <UserPlus className="w-8 h-8 text-red-600" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-            <p className="text-gray-600">Sign up to access your borrower portal</p>
+            <p className="text-gray-600">Sign up to access your Loan Command Center</p>
           </div>
 
           {error && (
@@ -211,6 +213,9 @@ export default function RegisterPage() {
           </a>
         </div>
       </div>
+      </div>
+
+      <ComplianceFooter />
     </div>
   );
 }

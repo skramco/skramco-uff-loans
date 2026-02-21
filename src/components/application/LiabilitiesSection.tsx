@@ -1,6 +1,7 @@
+import { useEffect } from 'react';
 import type { LiabilitiesSection as LiabilitiesData } from '../../types';
 import type { ValidationErrors } from '../../hooks/useApplicationForm';
-import FormField, { NumberInput } from './FormField';
+import FormField, { CurrencyInput } from './FormField';
 
 interface Props {
   data: LiabilitiesData;
@@ -12,6 +13,13 @@ interface Props {
 
 export default function LiabilitiesSection({ data, errors, onChange, totalMonthlyIncome, disabled }: Props) {
   const calculatedTotal = (data.creditCardDebt || 0) + (data.carLoans || 0) + (data.studentLoans || 0) + (data.otherDebts || 0) + (data.alimonyChildSupport || 0);
+
+  useEffect(() => {
+    if (calculatedTotal > 0 && data.totalMonthlyDebt !== calculatedTotal) {
+      onChange('totalMonthlyDebt', calculatedTotal);
+    }
+  }, [data.creditCardDebt, data.carLoans, data.studentLoans, data.otherDebts, data.alimonyChildSupport]);
+
   const displayDebt = data.totalMonthlyDebt ?? calculatedTotal;
   const dtiRatio = totalMonthlyIncome && totalMonthlyIncome > 0 && displayDebt > 0
     ? ((displayDebt / totalMonthlyIncome) * 100).toFixed(1)
@@ -26,47 +34,37 @@ export default function LiabilitiesSection({ data, errors, onChange, totalMonthl
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField label="Credit Card Payments" hint="Total minimum monthly payments">
-          <NumberInput
+          <CurrencyInput
             value={data.creditCardDebt}
             onChange={(v) => onChange('creditCardDebt', v)}
-            prefix="$"
-            placeholder="0"
             disabled={disabled}
           />
         </FormField>
         <FormField label="Auto Loans" hint="Monthly car loan payments">
-          <NumberInput
+          <CurrencyInput
             value={data.carLoans}
             onChange={(v) => onChange('carLoans', v)}
-            prefix="$"
-            placeholder="0"
             disabled={disabled}
           />
         </FormField>
         <FormField label="Student Loans" hint="Monthly student loan payments">
-          <NumberInput
+          <CurrencyInput
             value={data.studentLoans}
             onChange={(v) => onChange('studentLoans', v)}
-            prefix="$"
-            placeholder="0"
             disabled={disabled}
           />
         </FormField>
         <FormField label="Other Monthly Debts" hint="Personal loans, medical debt, etc.">
-          <NumberInput
+          <CurrencyInput
             value={data.otherDebts}
             onChange={(v) => onChange('otherDebts', v)}
-            prefix="$"
-            placeholder="0"
             disabled={disabled}
           />
         </FormField>
         <FormField label="Alimony / Child Support">
-          <NumberInput
+          <CurrencyInput
             value={data.alimonyChildSupport}
             onChange={(v) => onChange('alimonyChildSupport', v)}
-            prefix="$"
-            placeholder="0"
             disabled={disabled}
           />
         </FormField>
@@ -74,11 +72,9 @@ export default function LiabilitiesSection({ data, errors, onChange, totalMonthl
 
       <div className="border-t pt-6">
         <FormField label="Total Monthly Debt" required error={errors.totalMonthlyDebt} hint="Sum of all monthly obligations">
-          <NumberInput
+          <CurrencyInput
             value={data.totalMonthlyDebt !== undefined ? data.totalMonthlyDebt : (calculatedTotal > 0 ? calculatedTotal : undefined)}
             onChange={(v) => onChange('totalMonthlyDebt', v)}
-            prefix="$"
-            placeholder="0"
             disabled={disabled}
             error={!!errors.totalMonthlyDebt}
           />

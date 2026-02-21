@@ -17,7 +17,8 @@ import ContactPage from './pages/ContactPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import ApplicationPage from './components/application/ApplicationPage';
-import DashboardLayout from './pages/dashboard/DashboardLayout';
+import MyLoanPage from './pages/MyLoanPage';
+import AdminPage from './components/admin/AdminPage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -45,7 +46,9 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/apply" element={<ApplicationPage />} />
-        <Route path="/dashboard" element={<DashboardLayout />} />
+        <Route path="/dashboard" element={<MyLoanPage />} />
+        <Route path="/my-loan" element={<MyLoanPage />} />
+        <Route path="/admin" element={<AdminPage />} />
 
         <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
         <Route path="/buy" element={<PublicLayout><LandingPage intent="buy" /></PublicLayout>} />

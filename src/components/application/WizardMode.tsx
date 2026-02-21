@@ -94,6 +94,7 @@ export default function WizardMode({
             data={sectionData as any}
             errors={sectionErrors}
             onChange={(f, v) => onUpdateSection('property', f, v)}
+            loanPurpose={formData.loanDetails?.loanPurpose}
             disabled={disabled}
           />
         );
@@ -124,25 +125,11 @@ export default function WizardMode({
 
   return (
     <div>
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-medium text-gray-600">
             Step {currentStep + 1} of {SECTION_ORDER.length}
           </span>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            {saving && (
-              <span className="flex items-center gap-1 text-red-600">
-                <Loader className="w-3 h-3 animate-spin" />
-                Saving...
-              </span>
-            )}
-            {!saving && lastSaved && (
-              <span className="flex items-center gap-1 text-green-600">
-                <Save className="w-3 h-3" />
-                Saved {lastSaved.toLocaleTimeString()}
-              </span>
-            )}
-          </div>
         </div>
 
         <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -153,7 +140,7 @@ export default function WizardMode({
         </div>
       </div>
 
-      <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+      <div className="flex gap-2 mb-2 overflow-x-auto pb-2">
         {SECTION_ORDER.map((key, idx) => {
           const Icon = SECTION_ICONS[idx];
           const valid = isSectionValid(key, formData);
@@ -181,6 +168,21 @@ export default function WizardMode({
             </button>
           );
         })}
+      </div>
+
+      <div className="flex justify-end mb-3 min-h-[20px]">
+        {saving && (
+          <span className="flex items-center gap-1 text-xs text-gray-400">
+            <Loader className="w-3 h-3 animate-spin" />
+            Saving...
+          </span>
+        )}
+        {!saving && lastSaved && (
+          <span className="flex items-center gap-1 text-xs text-green-600">
+            <Save className="w-3 h-3" />
+            Saved {lastSaved.toLocaleTimeString()}
+          </span>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 md:p-8 min-h-[400px]">

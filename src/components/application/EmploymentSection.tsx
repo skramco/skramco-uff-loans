@@ -1,6 +1,6 @@
 import type { EmploymentSection as EmploymentData } from '../../types';
 import type { ValidationErrors } from '../../hooks/useApplicationForm';
-import FormField, { TextInput, NumberInput, CheckboxInput } from './FormField';
+import FormField, { TextInput, NumberInput, CheckboxInput, PhoneInput, DateMaskInput, CurrencyInput } from './FormField';
 import { DollarSign } from 'lucide-react';
 
 interface Props {
@@ -43,11 +43,9 @@ export default function EmploymentSection({ data, errors, onChange, disabled }: 
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <FormField label="Employer Phone">
-          <TextInput
+          <PhoneInput
             value={data.employerPhone || ''}
             onChange={(v) => onChange('employerPhone', v)}
-            placeholder="(555) 000-0000"
-            type="tel"
             disabled={disabled}
           />
         </FormField>
@@ -61,10 +59,9 @@ export default function EmploymentSection({ data, errors, onChange, disabled }: 
           />
         </FormField>
         <FormField label="Start Date">
-          <TextInput
+          <DateMaskInput
             value={data.employmentStartDate || ''}
             onChange={(v) => onChange('employmentStartDate', v)}
-            type="date"
             disabled={disabled}
           />
         </FormField>
@@ -81,48 +78,38 @@ export default function EmploymentSection({ data, errors, onChange, disabled }: 
         <h4 className="text-md font-semibold text-gray-800 mb-4">Monthly Income</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label="Base Monthly Income" required error={errors.baseIncome}>
-            <NumberInput
+            <CurrencyInput
               value={data.baseIncome}
               onChange={(v) => onChange('baseIncome', v)}
-              prefix="$"
-              placeholder="0"
               disabled={disabled}
               error={!!errors.baseIncome}
             />
           </FormField>
           <FormField label="Overtime">
-            <NumberInput
+            <CurrencyInput
               value={data.overtime}
               onChange={(v) => onChange('overtime', v)}
-              prefix="$"
-              placeholder="0"
               disabled={disabled}
             />
           </FormField>
           <FormField label="Bonus">
-            <NumberInput
+            <CurrencyInput
               value={data.bonus}
               onChange={(v) => onChange('bonus', v)}
-              prefix="$"
-              placeholder="0"
               disabled={disabled}
             />
           </FormField>
           <FormField label="Commission">
-            <NumberInput
+            <CurrencyInput
               value={data.commission}
               onChange={(v) => onChange('commission', v)}
-              prefix="$"
-              placeholder="0"
               disabled={disabled}
             />
           </FormField>
           <FormField label="Other Income">
-            <NumberInput
+            <CurrencyInput
               value={data.otherIncome}
               onChange={(v) => onChange('otherIncome', v)}
-              prefix="$"
-              placeholder="0"
               disabled={disabled}
             />
           </FormField>

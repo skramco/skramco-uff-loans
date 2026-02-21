@@ -305,6 +305,11 @@ export interface LoanDetailsSection {
   loanType?: string;
   interestRate?: number;
   loanTerm?: number;
+  // Refinance-specific
+  currentMortgageBalance?: number;
+  currentInterestRate?: number;
+  cashOutAmount?: number;
+  refinancePurpose?: string;
 }
 
 export interface DeclarationsSection {

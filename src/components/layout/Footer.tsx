@@ -29,13 +29,46 @@ const footerLinks = {
   ],
 };
 
-const statesLicensed = [
-  'Alabama', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Florida', 'Georgia',
-  'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine',
-  'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri',
-  'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'North Carolina',
-  'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'South Carolina',
-  'South Dakota', 'Tennessee', 'Texas', 'Virginia', 'Washington', 'Wisconsin',
+const stateLicenses = [
+  { state: 'Alabama', license: 'Consumer Credit License #23184', tradeName: 'UFF Express' },
+  { state: 'Arizona', license: 'Mortgage Banker License #BK-1027005', tradeName: 'UFF Express' },
+  { state: 'Arkansas', license: 'Combination Mortgage Banker-Broker-Servicer License #43004', tradeName: 'UFF Express' },
+  { state: 'California', license: 'DFPI Financing Law License #603J733', tradeName: 'UFF CORP.' },
+  { state: 'Colorado', license: 'Mortgage Company Registration', tradeName: 'UFF Express' },
+  { state: 'Florida', license: 'Mortgage Lender License #MLD506', tradeName: 'UFF Express; UFFC Mortgage' },
+  { state: 'Georgia', license: 'Mortgage Lender License #66436', tradeName: 'UFF Express' },
+  { state: 'Idaho', license: 'Mortgage Broker/Lender License #MBL-2080034381', tradeName: 'UFF; UFF Express; UFF West; UFFC Mortgage' },
+  { state: 'Illinois', license: 'Residential Mortgage License #MB.6760568', tradeName: 'UFF Express' },
+  { state: 'Indiana', license: 'Mortgage Lending License (DFI) #11139', tradeName: 'UFF Express' },
+  { state: 'Iowa', license: 'Mortgage Banker License #2008-0093' },
+  { state: 'Kansas', license: 'Mortgage Company License #MC.0025426', tradeName: 'UFF Express; UFFC Mortgage; United Fidelity Funding' },
+  { state: 'Kentucky', license: 'Mortgage Company License #MC23287' },
+  { state: 'Louisiana', license: 'Residential Mortgage Lending License' },
+  { state: 'Maine', license: 'Supervised Lender License #34381' },
+  { state: 'Maryland', license: 'Mortgage Lender License #34381' },
+  { state: 'Massachusetts', license: 'Mortgage Lender License #ML34381', tradeName: 'UFF Express' },
+  { state: 'Michigan', license: '1st Mortgage Broker/Lender/Servicer Registrant #FR0020432' },
+  { state: 'Minnesota', license: 'Residential Mortgage Originator License #MN-MO-40134678' },
+  { state: 'Mississippi', license: 'Mortgage Lender License #34381' },
+  { state: 'Missouri', license: 'Mortgage Company License #34381', tradeName: 'UFF Express; United Fidelity Funding' },
+  { state: 'Nebraska', license: 'Mortgage Banker License #2004', tradeName: 'UFF Express' },
+  { state: 'Nevada', license: 'Mortgage Company License #4944' },
+  { state: 'New Hampshire', license: 'Mortgage Banker License #34381MB' },
+  { state: 'New Jersey', license: 'Residential Mortgage Lender License' },
+  { state: 'New Mexico', license: 'Mortgage Loan Company License' },
+  { state: 'North Carolina', license: 'Mortgage Lender License #L-186719', tradeName: 'UFF Express' },
+  { state: 'North Dakota', license: 'Residential Mortgage Lender #ML104863' },
+  { state: 'Ohio', license: 'Residential Mortgage Lending Act Certificate #RM.850040.000' },
+  { state: 'Oklahoma', license: 'Mortgage Lender License #ML011045', tradeName: 'UFFC Mortgage' },
+  { state: 'Oregon', license: 'Mortgage Lending License #34381', tradeName: 'UFF Express' },
+  { state: 'Pennsylvania', license: 'Mortgage Lender License #99512', tradeName: 'UFF Express' },
+  { state: 'South Carolina', license: 'Mortgage Lender/Servicer License (BFI) #MLS-34381' },
+  { state: 'South Dakota', license: 'Mortgage Lender License #34381.ML' },
+  { state: 'Tennessee', license: 'Mortgage License #34381', tradeName: 'UFF Express' },
+  { state: 'Texas', license: 'Mortgage Banker Registration (SML)', tradeName: 'VFF United Fidelity Funding Corp.' },
+  { state: 'Virginia', license: 'Lender License #MC-7052', tradeName: 'UFF Express' },
+  { state: 'Washington', license: 'Consumer Loan Company License #CL-34381', tradeName: 'UFF West Funding Corp.' },
+  { state: 'Wisconsin', license: 'Mortgage Banker License #34381BA', tradeName: 'UFF Express' },
 ];
 
 export default function Footer() {
@@ -107,11 +140,14 @@ export default function Footer() {
             <line x1="20" y1="85" x2="80" y2="85" stroke="currentColor" strokeWidth="3"/>
           </svg>
           <div>
-            <p className="text-white font-semibold text-sm mb-1">Equal Housing Opportunity</p>
+            <p className="text-white font-semibold text-sm mb-1">Equal Housing Lender</p>
             <p className="text-xs text-gray-400 leading-relaxed">
-              United Fidelity Funding Corp is committed to providing equal housing opportunities.
-              We do not discriminate on the basis of race, color, religion, national origin, sex,
-              handicap, familial status, or age in our lending practices.
+              It is the policy of United Fidelity Funding Corp. to treat all consumers and prospective consumers
+              consistently and equally without regard to race, color, religion, national origin, sex, marital status,
+              age (provided the applicant has the capacity to enter into a binding contract), receipt of income from
+              any public assistance program, familial status, disability, or the exercise of any right under the
+              Consumer Credit Protection Act. United Fidelity Funding Corp. complies with all applicable fair lending
+              laws and regulations, including the Equal Credit Opportunity Act (ECOA) and the Fair Housing Act (FHA).
             </p>
           </div>
         </div>
@@ -122,23 +158,158 @@ export default function Footer() {
           </p>
 
           <p>
-            <span className="text-gray-300 font-semibold">Corporate Information:</span> United Fidelity Funding Corp,
-            NMLS #34381, operates as a licensed mortgage lender. Licensed in {statesLicensed.length} states: {statesLicensed.join(', ')}.
+            <span className="text-gray-300 font-semibold">Corporate Information:</span> United Fidelity Funding Corp.,
+            NMLS #34381. Principal office: 1300 NW Briarcliff Pkwy #275, Kansas City, MO 64116. Phone: (855) 95-EAGLE.
+            For licensing information, go to{' '}
+            <a
+              href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/34381"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand-400 hover:text-brand-300 underline"
+            >
+              www.nmlsconsumeraccess.org
+            </a>.
+            Not all products are available in all states. A United Fidelity Funding Corp. loan originator may only
+            originate mortgage loans on real property located in a state where both the company and the originator
+            are licensed to transact mortgage business.
           </p>
 
           <p>
-            <span className="text-gray-300 font-semibold">Important Disclosures:</span> This is not an offer to enter
-            into an agreement. Not all customers will qualify. Information, rates, and programs are subject to change
-            without prior notice. All products are subject to credit and property approval. Not all products are available
-            in all states or for all dollar amounts. Other restrictions and limitations may apply.
+            <span className="text-gray-300 font-semibold">Important Disclosures:</span> This is not a commitment to lend
+            or an offer to enter into an agreement. Not all customers will qualify. Rates, terms, programs, information,
+            and conditions are subject to change without notice. All loan programs are subject to borrower and property
+            qualifications, including credit, income, property appraisal, and other applicable criteria. Not all products
+            are available in all states or for all dollar amounts. Monthly payment estimates include principal, interest,
+            estimated taxes, and estimated homeowner's insurance. Actual amounts may differ. PMI may be required for down
+            payments below 20%. While refinancing may reduce your monthly payment, total finance charges may be higher
+            over the life of the loan. Other restrictions and limitations may apply.
           </p>
 
           <p>
-            <span className="text-gray-300 font-semibold">Licensing Information:</span> United Fidelity Funding Corp
-            maintains active licenses in accordance with state and federal requirements. For detailed licensing
-            information specific to your state, please visit{' '}
+            <span className="text-gray-300 font-semibold">Consumer Protection:</span> United Fidelity Funding Corp.
+            complies with all applicable federal regulations including the Truth in Lending Act (TILA), Real Estate
+            Settlement Procedures Act (RESPA), Equal Credit Opportunity Act (ECOA), Fair Credit Reporting Act (FCRA),
+            Home Mortgage Disclosure Act (HMDA), and the Dodd-Frank Act Ability-to-Repay/Qualified Mortgage Rule.
+            This is not a government agency.
+          </p>
+
+          <hr className="border-gray-800 my-4" />
+
+          <p className="text-gray-300 font-semibold">State-Specific Disclosures</p>
+
+          <p>
+            <span className="text-gray-300 font-semibold">California:</span> Licensed by the Department of Financial
+            Protection and Innovation (DFPI) under the California Financing Law, License #603J733. Loans made or
+            arranged pursuant to a California Financing Law license.
+          </p>
+
+          <p>
+            <span className="text-gray-300 font-semibold">Colorado:</span> United Fidelity Funding Corp., Mortgage
+            Company Registration, NMLS #34381. Regulated by the Division of Real Estate.
+          </p>
+
+          <p>
+            <span className="text-gray-300 font-semibold">Georgia:</span> Georgia Residential Mortgage Licensee,
+            License #66436. Licensed by the Georgia Department of Banking and Finance.
+          </p>
+
+          <p>
+            <span className="text-gray-300 font-semibold">Illinois:</span> Illinois Residential Mortgage License
+            #MB.6760568. For licensing information, go to{' '}
             <a
               href="https://www.nmlsconsumeraccess.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand-400 hover:text-brand-300 underline"
+            >
+              www.nmlsconsumeraccess.org
+            </a>.
+          </p>
+
+          <p>
+            <span className="text-gray-300 font-semibold">Kansas:</span> Licensed Mortgage Company, License
+            #MC.0025426. Licensed by the Kansas Office of the State Bank Commissioner.
+          </p>
+
+          <div>
+            <p className="mb-2">
+              <span className="text-gray-300 font-semibold">Texas:</span> United Fidelity Funding Corp., NMLS #34381.
+              1300 NW Briarcliff Pkwy #275, Kansas City, MO 64116.
+            </p>
+            <p className="uppercase mb-2">
+              CONSUMERS WISHING TO FILE A COMPLAINT AGAINST A COMPANY OR A RESIDENTIAL MORTGAGE LOAN ORIGINATOR SHOULD
+              COMPLETE AND SEND A COMPLAINT FORM TO THE TEXAS DEPARTMENT OF SAVINGS AND MORTGAGE LENDING, 2601 NORTH
+              LAMAR, SUITE 201, AUSTIN, TEXAS 78705. COMPLAINT FORMS AND INSTRUCTIONS MAY BE OBTAINED FROM THE
+              DEPARTMENT'S WEBSITE AT{' '}
+              <a
+                href="https://www.sml.texas.gov"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-400 hover:text-brand-300 underline"
+              >
+                WWW.SML.TEXAS.GOV
+              </a>.
+              A TOLL-FREE CONSUMER HOTLINE IS AVAILABLE AT 1-877-276-5550.
+            </p>
+            <p className="uppercase">
+              THE DEPARTMENT MAINTAINS A RECOVERY FUND TO MAKE PAYMENTS OF CERTAIN ACTUAL OUT OF POCKET DAMAGES
+              SUSTAINED BY BORROWERS CAUSED BY ACTS OF LICENSED RESIDENTIAL MORTGAGE LOAN ORIGINATORS. A WRITTEN
+              APPLICATION FOR REIMBURSEMENT FROM THE RECOVERY FUND MUST BE FILED WITH AND INVESTIGATED BY THE
+              DEPARTMENT PRIOR TO THE PAYMENT OF A CLAIM. FOR MORE INFORMATION ABOUT THE RECOVERY FUND, PLEASE
+              CONSULT THE DEPARTMENT'S WEBSITE AT{' '}
+              <a
+                href="https://www.sml.texas.gov"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-400 hover:text-brand-300 underline"
+              >
+                WWW.SML.TEXAS.GOV
+              </a>.
+            </p>
+          </div>
+
+          <p>
+            <span className="text-gray-300 font-semibold">Washington:</span> United Fidelity Funding Corp. d/b/a
+            UFF West Funding Corp. Consumer Loan Company License #CL-34381. Licensed by the Washington Department
+            of Financial Institutions.
+          </p>
+
+          <hr className="border-gray-800 my-4" />
+
+          <p>
+            <span className="text-gray-300 font-semibold">State Licensing ({stateLicenses.length} states):</span> United
+            Fidelity Funding Corp., NMLS #34381, is licensed in the following states:{' '}
+            {stateLicenses.map((s, i) => (
+              <span key={s.state}>
+                <span className="text-gray-400">{s.state}</span>{' '}
+                <span className="text-gray-600">({s.license})</span>
+                {i < stateLicenses.length - 1 ? '; ' : '.'}
+              </span>
+            ))}
+          </p>
+
+          <p>
+            <span className="text-gray-300 font-semibold">Consumer Complaints:</span> If you have a complaint, first
+            contact United Fidelity Funding Corp. at (855) 95-EAGLE or{' '}
+            <a
+              href="mailto:compliance@unitedfidelityfunding.com"
+              className="text-brand-400 hover:text-brand-300 underline"
+            >
+              compliance@unitedfidelityfunding.com
+            </a>.
+            You may also contact the Consumer Financial Protection Bureau at{' '}
+            <a
+              href="https://www.consumerfinance.gov"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand-400 hover:text-brand-300 underline"
+            >
+              www.consumerfinance.gov
+            </a>{' '}
+            or (855) 411-2372, or your state's regulatory agency. For state-specific licensing and regulatory
+            information, visit{' '}
+            <a
+              href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/34381"
               target="_blank"
               rel="noopener noreferrer"
               className="text-brand-400 hover:text-brand-300 underline"
@@ -148,42 +319,9 @@ export default function Footer() {
           </p>
 
           <p>
-            <span className="text-gray-300 font-semibold">Consumer Protection:</span> United Fidelity Funding Corp complies
-            with all federal regulations including the Truth in Lending Act (TILA), Real Estate Settlement Procedures Act
-            (RESPA), Equal Credit Opportunity Act (ECOA), Fair Credit Reporting Act (FCRA), and the Dodd-Frank Act
-            Ability-to-Repay Rule.
-          </p>
-
-          <p>
-            <span className="text-gray-300 font-semibold">California:</span> Licensed by the Department of Financial Protection
-            and Innovation under the California Residential Mortgage Lending Act. Loans made or arranged pursuant to a
-            California Residential Mortgage Lending Act license.
-          </p>
-
-          <p>
-            <span className="text-gray-300 font-semibold">Texas:</span> This loan is being made by a Supervised Mortgage Lender
-            as defined by the Texas Finance Code and is subject to regulatory oversight by the Texas Department of Savings
-            and Mortgage Lending.
-          </p>
-
-          <p>
-            <span className="text-gray-300 font-semibold">Consumer Complaints:</span> If you have a complaint, first contact us at
-            (855) 95-EAGLE. You may also contact the Consumer Financial Protection Bureau at{' '}
-            <a
-              href="https://www.consumerfinance.gov"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-brand-400 hover:text-brand-300 underline"
-            >
-              www.consumerfinance.gov
-            </a>{' '}
-            or (855) 411-2372.
-          </p>
-
-          <p>
             Mortgage rates shown are for illustrative purposes only and may not reflect current market conditions.
-            Your actual rate will depend on your specific financial situation, credit profile, property details, and other factors.
-            APR and payment examples are estimates and may vary. Contact us for a personalized quote.
+            Your actual rate will depend on your specific financial situation, credit profile, property details, and
+            other factors. APR and payment examples are estimates and may vary. Contact us for a personalized quote.
           </p>
         </div>
       </div>

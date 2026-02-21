@@ -16,7 +16,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (session) {
-      window.location.href = '/dashboard';
+      window.location.href = '/my-loan';
     }
   }, [session]);
 
@@ -66,7 +66,7 @@ export default function LoginPage() {
 
     if (result.success && result.loan) {
       login(loanNumber.trim(), result.loan);
-      window.location.href = '/dashboard';
+      window.location.href = '/my-loan';
     } else {
       setError(result.error || 'Unable to verify your loan. Please try again.');
       if (result.zipMismatch) {
@@ -94,7 +94,7 @@ export default function LoginPage() {
             <div className="inline-flex items-center justify-center w-14 h-14 bg-white/15 backdrop-blur-sm rounded-xl mb-4">
               <ShieldCheck className="w-7 h-7 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-1">Borrower Portal</h1>
+            <h1 className="text-2xl font-bold text-white mb-1">Loan Command Center</h1>
             <p className="text-red-100 text-sm">
               Access your loan information securely
             </p>

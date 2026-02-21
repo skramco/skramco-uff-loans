@@ -1,6 +1,6 @@
 import type { PersonalInfoSection as PersonalInfoData } from '../../types';
 import type { ValidationErrors } from '../../hooks/useApplicationForm';
-import FormField, { TextInput, SelectInput, NumberInput } from './FormField';
+import FormField, { TextInput, SelectInput, NumberInput, PhoneInput, DateMaskInput, ZipInput, CurrencyInput, US_STATES } from './FormField';
 
 interface Props {
   data: PersonalInfoData;
@@ -58,11 +58,9 @@ export default function PersonalInfoSection({ data, errors, onChange, disabled }
           />
         </FormField>
         <FormField label="Phone Number" required error={errors.phone}>
-          <TextInput
+          <PhoneInput
             value={data.phone || ''}
             onChange={(v) => onChange('phone', v)}
-            placeholder="(555) 123-4567"
-            type="tel"
             disabled={disabled}
             error={!!errors.phone}
           />
@@ -71,10 +69,9 @@ export default function PersonalInfoSection({ data, errors, onChange, disabled }
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <FormField label="Date of Birth">
-          <TextInput
+          <DateMaskInput
             value={data.dateOfBirth || ''}
             onChange={(v) => onChange('dateOfBirth', v)}
-            type="date"
             disabled={disabled}
           />
         </FormField>
@@ -129,21 +126,19 @@ export default function PersonalInfoSection({ data, errors, onChange, disabled }
               />
             </FormField>
             <FormField label="State" required error={errors.currentState}>
-              <TextInput
+              <SelectInput
                 value={data.currentState || ''}
                 onChange={(v) => onChange('currentState', v)}
-                placeholder="CA"
-                maxLength={2}
+                placeholder="Select..."
                 disabled={disabled}
                 error={!!errors.currentState}
+                options={US_STATES}
               />
             </FormField>
             <FormField label="ZIP" required error={errors.currentZip}>
-              <TextInput
+              <ZipInput
                 value={data.currentZip || ''}
                 onChange={(v) => onChange('currentZip', v)}
-                placeholder="12345"
-                maxLength={10}
                 disabled={disabled}
                 error={!!errors.currentZip}
               />
@@ -173,11 +168,9 @@ export default function PersonalInfoSection({ data, errors, onChange, disabled }
               />
             </FormField>
             <FormField label="Monthly Rent/Mortgage">
-              <NumberInput
+              <CurrencyInput
                 value={data.monthlyRent}
                 onChange={(v) => onChange('monthlyRent', v)}
-                prefix="$"
-                placeholder="0"
                 disabled={disabled}
               />
             </FormField>

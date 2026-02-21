@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Home, LogOut } from 'lucide-react';
+import ComplianceFooter from '../../components/layout/ComplianceFooter';
 import { useBorrowerSession } from '../../contexts/BorrowerSessionContext';
 import { extractBorrower } from '../../services/loanDataHelpers';
 import OverviewTab from './tabs/OverviewTab';
@@ -55,7 +56,7 @@ export default function DashboardLayout() {
           <Link to="/" className="flex items-center gap-3 text-gray-900 hover:text-gray-700 transition-colors">
             <img src="/uff_logo.svg" alt="UFF Logo" className="h-8 w-auto" />
             <div className="h-6 w-px bg-gray-200" />
-            <span className="font-bold text-sm">Borrower Portal</span>
+            <span className="font-bold text-sm">Loan Command Center</span>
           </Link>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600 hidden sm:block">{borrower.fullName}</span>
@@ -94,6 +95,8 @@ export default function DashboardLayout() {
 
         {renderContent()}
       </div>
+
+      <ComplianceFooter />
     </div>
   );
 }

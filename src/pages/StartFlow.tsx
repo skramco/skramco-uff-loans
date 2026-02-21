@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   Home, RefreshCw, Wallet, ArrowRight, ArrowLeft, ChevronDown,
   ChevronUp, Shield, CheckCircle2, Sparkles, DollarSign,
-  Send, X, Mail,
+  Send, X, Mail, Lock, Loader2, Eye, EyeOff,
 } from 'lucide-react';
+import ComplianceFooter from '../components/layout/ComplianceFooter';
+import { useAuth } from '../contexts/AuthContext';
 
 type Intent = 'buy' | 'refi' | 'equity';
 type PropertyType = 'single' | 'condo' | 'townhouse' | 'multi';
@@ -35,9 +37,10 @@ function formatUSD(num: number) {
 
 export default function StartFlow() {
   const [params] = useSearchParams();
-  const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [step, setStep] = useState(1);
   const [showEmail, setShowEmail] = useState(false);
+  const [checkEmailAddress, setCheckEmailAddress] = useState('');
   const [data, setData] = useState<FlowData>({
     intent: (params.get('intent') as Intent) || '',
     zip: '',
@@ -92,13 +95,27 @@ export default function StartFlow() {
   const ctcLow = data.intent === 'buy' ? dp + closingLow : closingLow;
   const ctcHigh = data.intent === 'buy' ? dp + closingHigh : closingHigh;
 
-  const handleSave = () => {
+  const saveLeadData = () => {
     localStorage.setItem('uff_lead', JSON.stringify({
       ...data,
       results: { lowRate, highRate, totalLow, totalHigh, ctcLow, ctcHigh, loan },
       createdAt: new Date().toISOString(),
     }));
-    navigate('/register');
+  };
+
+  const handleCreateAccount = () => {
+    saveLeadData();
+    setStep(6);
+  };
+
+  const handleSignupSuccess = (email: string) => {
+    setCheckEmailAddress(email);
+    setStep(7);
+  };
+
+  const handleSkipToSignup = () => {
+    saveLeadData();
+    setStep(6);
   };
 
   return (
@@ -108,7 +125,7 @@ export default function StartFlow() {
           <Link to="/" className="text-gray-400 hover:text-gray-600 transition-colors">
             <img src="/uff_logo.svg" alt="United Fidelity Funding Corp." className="h-8 w-auto" />
           </Link>
-          {step < 5 && (
+          {step <= 4 && (
             <div className="flex items-center gap-2">
               {[1, 2, 3, 4].map((s) => (
                 <div
@@ -122,7 +139,7 @@ export default function StartFlow() {
           )}
         </div>
 
-        <div className="w-full max-w-xl mx-auto animate-fade-in-up" key={step}>
+        <div className={`w-full mx-auto animate-fade-in-up ${step >= 6 ? 'max-w-3xl' : 'max-w-xl'}`} key={step}>
           {step === 1 && <StepGoal data={data} update={update} />}
           {step === 2 && <StepLocation data={data} update={update} />}
           {step === 3 && <StepFinancials data={data} update={update} />}
@@ -138,12 +155,40 @@ export default function StartFlow() {
               loan={loan}
               tax={tax}
               insurance={insurance}
-              onSave={handleSave}
+              onSave={handleCreateAccount}
               onEmailCapture={() => setShowEmail(true)}
             />
           )}
+          {step === 6 && (
+            <WelcomeSignup
+              signUp={signUp}
+              onSuccess={handleSignupSuccess}
+            />
+          )}
+          {step === 7 && (
+            <div className="max-w-md mx-auto text-center py-8">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-green-50 rounded-full mb-6">
+                <CheckCircle2 className="w-10 h-10 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">You're all set!</h2>
+              <p className="text-gray-600 mb-1">We sent a confirmation link to:</p>
+              <p className="font-semibold text-brand-600 text-lg mb-6">{checkEmailAddress}</p>
+              <div className="bg-gray-50 rounded-xl p-5 text-left mb-6">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">What happens next?</h4>
+                <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
+                  <li>Click the confirmation link in your email</li>
+                  <li>You'll be taken to your loan application</li>
+                  <li>Your estimate data will be pre-filled</li>
+                  <li>Complete your application at your own pace</li>
+                </ol>
+              </div>
+              <p className="text-xs text-gray-400">
+                Didn't get it? Check your spam folder. It may take a minute to arrive.
+              </p>
+            </div>
+          )}
 
-          {step < 5 && (
+          {step <= 4 && (
             <div className="flex items-center justify-between mt-10 pt-6 border-t border-gray-100">
               <button
                 onClick={goBack}
@@ -164,6 +209,15 @@ export default function StartFlow() {
             </div>
           )}
 
+          {step <= 4 && (
+            <button
+              onClick={handleSkipToSignup}
+              className="block mx-auto mt-4 text-xs text-gray-400 hover:text-brand-600 transition-colors underline underline-offset-2"
+            >
+              Skip — I already know what I need
+            </button>
+          )}
+
           <div className="flex items-center justify-center gap-2 mt-6 text-xs text-gray-400">
             <Shield className="w-3.5 h-3.5 shrink-0" />
             <span>No credit check. Your data is encrypted.</span>
@@ -171,45 +225,9 @@ export default function StartFlow() {
         </div>
       </div>
 
-      <div className="mt-auto border-t border-gray-100 bg-gray-50/80">
-        <div className="container-narrow py-6 space-y-4">
-          <div className="text-[10px] leading-relaxed text-gray-400 space-y-3">
-            <p>
-              United Fidelity Funding Corp. NMLS #34381. Licensed by the Department of Financial
-              Protection and Innovation under the California Residential Mortgage Lending Act. For
-              licensing information, go to{' '}
-              <a href="https://www.nmlsconsumeraccess.org" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-500">
-                www.nmlsconsumeraccess.org
-              </a>.
-            </p>
-            <p>
-              This is not a commitment to lend. Rates, terms, and availability are subject to change
-              without notice. All loan programs are subject to borrower and property qualifications,
-              including credit, income, property appraisal, and other applicable criteria. Not all
-              applicants will qualify. Actual rates, payments, and costs may vary based on individual
-              circumstances.
-            </p>
-            <p>
-              The information provided is for estimation purposes only and does not constitute an
-              offer or solicitation of a mortgage loan. Monthly payment estimates include principal,
-              interest, estimated taxes, and estimated homeowner's insurance. Actual amounts may
-              differ. PMI may be required for down payments below 20%.
-            </p>
-            <p>
-              Equal Housing Lender. This is not a government agency.
-            </p>
-          </div>
-          <div className="flex items-center justify-between text-[10px] text-gray-400">
-            <span>&copy; {new Date().getFullYear()} United Fidelity Funding Corp. All rights reserved.</span>
-            <div className="flex items-center gap-4">
-              <a href="/privacy" className="hover:text-gray-500 underline">Privacy Policy</a>
-              <a href="/terms" className="hover:text-gray-500 underline">Terms of Use</a>
-              <a href="/licenses" className="hover:text-gray-500 underline">Licensing</a>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ComplianceFooter className="mt-auto" />
 
+      {/* Email Summary Modal */}
       {showEmail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowEmail(false)} />
@@ -547,7 +565,7 @@ function StepResults({
           onClick={onSave}
           className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-colors text-lg"
         >
-          Save & continue
+          Create my account
           <ArrowRight className="w-5 h-5" />
         </button>
         <button
@@ -557,6 +575,195 @@ function StepResults({
           <Send className="w-4 h-4" />
           Send me this
         </button>
+      </div>
+    </div>
+  );
+}
+
+function WelcomeSignup({
+  signUp,
+  onSuccess,
+}: {
+  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: any }>;
+  onSuccess: (email: string) => void;
+}) {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
+      setError('Please fill in all fields.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setLoading(true);
+    const { error: signUpError } = await signUp(email.trim(), password, firstName.trim(), lastName.trim());
+    setLoading(false);
+
+    if (signUpError) {
+      setError(signUpError.message || 'Failed to create account.');
+    } else {
+      onSuccess(email.trim());
+    }
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-3">
+          Let's get your loan started
+        </h2>
+        <p className="text-gray-500 text-lg">
+          Create a free account to begin your application. It only takes a minute.
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-5 gap-8 items-start">
+        {/* Value proposition */}
+        <div className="md:col-span-2 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center mt-0.5">
+              <Shield className="w-4 h-4 text-brand-600" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900">Licensed in 39 states</h4>
+              <p className="text-xs text-gray-500 mt-0.5">NMLS #34381 — a trusted, regulated lender since 2003.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center mt-0.5">
+              <DollarSign className="w-4 h-4 text-brand-600" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900">Competitive rates</h4>
+              <p className="text-xs text-gray-500 mt-0.5">We shop multiple investors to find you the best deal.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center mt-0.5">
+              <Sparkles className="w-4 h-4 text-brand-600" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900">Save your progress</h4>
+              <p className="text-xs text-gray-500 mt-0.5">Your application auto-saves. Come back anytime.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center mt-0.5">
+              <CheckCircle2 className="w-4 h-4 text-brand-600" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900">No obligation</h4>
+              <p className="text-xs text-gray-500 mt-0.5">Apply at your own pace. No commitment until you're ready.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Signup form */}
+        <div className="md:col-span-3 bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          {error && (
+            <div className="mb-4 px-4 py-3 bg-red-50 text-red-700 text-sm rounded-lg">{error}</div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">First name</label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  placeholder="John"
+                  disabled={loading}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Last name</label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  placeholder="Doe"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  placeholder="you@email.com"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-9 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  placeholder="At least 6 characters"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 disabled:opacity-70 transition-colors"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  Create my free account
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+
+          <p className="mt-4 text-center text-xs text-gray-400">
+            Already have an account?{' '}
+            <a href="/login" className="text-brand-600 font-medium hover:text-brand-700">Sign in</a>
+          </p>
+        </div>
       </div>
     </div>
   );
