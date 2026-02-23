@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, Search } from 'lucide-react';
+import { Clock, Search, Activity, ArrowRight, TrendingUp, BarChart3, Home, ShieldCheck } from 'lucide-react';
 import { articles } from '../data/articles';
 
 const allCategories = ['All', ...new Set(articles.map((a) => a.category))];
@@ -28,6 +28,52 @@ export default function LearnPage() {
 
       <section className="section-padding bg-white">
         <div className="container-wide">
+          {/* Market Pulse Featured Card */}
+          <Link
+            to="/learn/market-pulse"
+            className="group block mb-10 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            <div className="flex flex-col md:flex-row">
+              <div className="flex-1 p-8 md:p-10">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="px-2.5 py-0.5 bg-red-500/20 text-red-300 text-xs font-semibold rounded-full flex items-center gap-1.5">
+                    <Activity className="w-3 h-3" />
+                    Live Data
+                  </span>
+                  <span className="text-xs text-gray-500">Updated weekly from the Federal Reserve</span>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-extrabold text-white mb-3 group-hover:text-red-300 transition-colors">
+                  Market Pulse
+                </h2>
+                <p className="text-gray-400 mb-6 max-w-lg leading-relaxed">
+                  Live mortgage rates, home prices, affordability data, and economic indicators — all in one place. Powered by FRED.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                  <div className="bg-white/5 rounded-lg px-3 py-2.5 border border-white/10">
+                    <TrendingUp className="w-4 h-4 text-red-400 mb-1" />
+                    <p className="text-xs text-gray-400">Mortgage Rates</p>
+                  </div>
+                  <div className="bg-white/5 rounded-lg px-3 py-2.5 border border-white/10">
+                    <Home className="w-4 h-4 text-emerald-400 mb-1" />
+                    <p className="text-xs text-gray-400">Home Prices</p>
+                  </div>
+                  <div className="bg-white/5 rounded-lg px-3 py-2.5 border border-white/10">
+                    <ShieldCheck className="w-4 h-4 text-sky-400 mb-1" />
+                    <p className="text-xs text-gray-400">Affordability</p>
+                  </div>
+                  <div className="bg-white/5 rounded-lg px-3 py-2.5 border border-white/10">
+                    <BarChart3 className="w-4 h-4 text-purple-400 mb-1" />
+                    <p className="text-xs text-gray-400">Economic Data</p>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-2 text-sm font-semibold text-white group-hover:text-red-300 transition-colors">
+                  Explore Market Pulse
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </div>
+            </div>
+          </Link>
+
           <div className="flex flex-col md:flex-row md:items-center gap-4 mb-10">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

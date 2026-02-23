@@ -19,6 +19,7 @@ import RegisterPage from './components/RegisterPage';
 import ApplicationPage from './components/application/ApplicationPage';
 import MyLoanPage from './pages/MyLoanPage';
 import AdminPage from './components/admin/AdminPage';
+import MarketPulsePage from './pages/MarketPulsePage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/rates" element={<PublicLayout><RatesPage /></PublicLayout>} />
         <Route path="/calculators" element={<PublicLayout><CalculatorsPage /></PublicLayout>} />
         <Route path="/learn" element={<PublicLayout><LearnPage /></PublicLayout>} />
+        <Route path="/learn/market-pulse" element={<PublicLayout><MarketPulsePage /></PublicLayout>} />
         <Route path="/learn/:slug" element={<PublicLayout><ArticlePage /></PublicLayout>} />
         <Route path="/reviews" element={<PublicLayout><ReviewsPage /></PublicLayout>} />
         <Route path="/about" element={<PublicLayout><AboutPage /></PublicLayout>} />
