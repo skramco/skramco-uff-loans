@@ -5,8 +5,12 @@ import { createClient } from "npm:@supabase/supabase-js@2";
  * Vesta Webhook Receiver — Channel-Aware Architecture
  *
  * Dispatches: eventType × channel → template + recipients
- *   - Retail  → LO email (from loanOriginator)
- *   - Wholesale → Broker email (from partnerBrokers[].emailAddress)
+ *   - Retail  → LO (loanOriginator) + Processor (loanProcessor)
+ *   - Wholesale → partnerBroker LoanOriginator + partnerBroker Processor
+ *                 + Account Executive + Account Manager (from primaryRoleAssignees → assignedUsers)
+ *
+ * Duplicate emails are automatically deduplicated (same address won't receive twice).
+ * Company email always receives a copy.
  *
  * URL: https://pvzqgboffydqeqzeiysx.supabase.co/functions/v1/vesta-webhook
  */
@@ -46,11 +50,24 @@ interface LoanDetails {
   loEmail: string;
   loPhone: string;
   loNmlsId: string;
+  // Retail processor (from loanProcessor or assignedUsers)
+  processorName: string;
+  processorEmail: string;
+  // Wholesale: partnerBroker with brokerRoleType = LoanOriginator
   brokerName: string;
   brokerEmail: string;
   brokerCompany: string;
   brokerPhone: string;
   brokerNmlsId: string;
+  // Wholesale: partnerBroker with brokerRoleType = Processor
+  brokerProcessorName: string;
+  brokerProcessorEmail: string;
+  // Wholesale: primaryRoleAssignees → Account Executive
+  accountExecutiveName: string;
+  accountExecutiveEmail: string;
+  // Wholesale: primaryRoleAssignees → Account Manager
+  accountManagerName: string;
+  accountManagerEmail: string;
   propertyAddress: string;
   loanAmount: number | null;
   loanType: string;
@@ -142,9 +159,11 @@ async function fetchLoanDetails(loanId: string): Promise<LoanDetails | null> {
     if (!response.ok) { console.error(`Vesta API error (${response.status}): ${await response.text()}`); return null; }
     const loan = await response.json();
 
-    // Log raw keys for debugging partnerBrokers structure
+    // Log raw keys for debugging
     console.log("Vesta loan keys:", Object.keys(loan || {}).join(", "));
-    if (loan?.partnerBrokers) console.log("partnerBrokers:", JSON.stringify(loan.partnerBrokers).slice(0, 500));
+    if (loan?.partnerBrokers) console.log("partnerBrokers:", JSON.stringify(loan.partnerBrokers).slice(0, 800));
+    if (loan?.primaryRoleAssignees) console.log("primaryRoleAssignees:", JSON.stringify(loan.primaryRoleAssignees).slice(0, 500));
+    if (loan?.assignedUsers) console.log("assignedUsers count:", loan.assignedUsers?.length);
 
     const borrower = loan?.borrowers?.[0] || {};
     const borrowerName = [borrower.firstName, borrower.lastName].filter(Boolean).join(" ") || "Borrower";
@@ -157,8 +176,34 @@ async function fetchLoanDetails(loanId: string): Promise<LoanDetails | null> {
     const propertyAddress = [addr.line || addr.streetAddress, addr.city, addr.state, addr.zipCode].filter(Boolean).join(", ");
     const loanProduct = loan?.loanProduct || {};
 
-    // Extract partner broker info (Wholesale channel)
-    const broker = loan?.partnerBrokers?.[0] || {};
+    // ── Retail Processor ──
+    // Try loanProcessor first, then fall back to assignedUsers with a processor-like role
+    const retailProcessor = loan?.loanProcessor || {};
+    const processorName = retailProcessor.fullName || retailProcessor.name || [retailProcessor.firstName, retailProcessor.lastName].filter(Boolean).join(" ") || "";
+    const processorEmail = retailProcessor.email || retailProcessor.emailAddress || "";
+
+    // ── Wholesale: partnerBrokers by brokerRoleType ──
+    const partnerBrokers: any[] = Array.isArray(loan?.partnerBrokers) ? loan.partnerBrokers : [];
+    const brokerLO = partnerBrokers.find((b: any) => b.brokerRoleType === "LoanOriginator" || b.brokerRoleTypes?.includes("LoanOriginator")) || {};
+    const brokerProcessor = partnerBrokers.find((b: any) => b.brokerRoleType === "Processor" || b.brokerRoleTypes?.includes("Processor")) || {};
+
+    // ── Wholesale: Account Executive & Account Manager from primaryRoleAssignees ──
+    const roleAssignees: any[] = Array.isArray(loan?.primaryRoleAssignees) ? loan.primaryRoleAssignees : [];
+    const assignedUsers: any[] = Array.isArray(loan?.assignedUsers) ? loan.assignedUsers : [];
+
+    function resolveAssigneeEmail(roleName: string): { name: string; email: string } {
+      const assignee = roleAssignees.find((r: any) => r.roleName === roleName);
+      if (!assignee?.userId) return { name: "", email: "" };
+      const user = assignedUsers.find((u: any) => u.id === assignee.userId || u.userId === assignee.userId);
+      if (!user) return { name: "", email: "" };
+      const name = user.fullName || user.name || [user.firstName, user.lastName].filter(Boolean).join(" ") || "";
+      const email = user.email || user.emailAddress || "";
+      return { name, email };
+    }
+
+    const ae = resolveAssigneeEmail("Account Executive");
+    const am = resolveAssigneeEmail("Account Manager");
+
     const loanChannel = loan?.loanChannel || loan?.channel || "";
 
     return {
@@ -172,11 +217,19 @@ async function fetchLoanDetails(loanId: string): Promise<LoanDetails | null> {
       loEmail: lo.email || lo.emailAddress || "",
       loPhone: lo.phoneNumber || lo.phone || "",
       loNmlsId: lo.nmlsId || "",
-      brokerName: broker.fullName || broker.name || [broker.firstName, broker.lastName].filter(Boolean).join(" ") || "",
-      brokerEmail: broker.emailAddress || broker.email || "",
-      brokerCompany: broker.companyName || broker.company || "",
-      brokerPhone: broker.phoneNumber || broker.phone || "",
-      brokerNmlsId: broker.nmlsId || "",
+      processorName,
+      processorEmail,
+      brokerName: brokerLO.fullName || brokerLO.name || [brokerLO.firstName, brokerLO.lastName].filter(Boolean).join(" ") || "",
+      brokerEmail: brokerLO.emailAddress || brokerLO.email || "",
+      brokerCompany: brokerLO.companyName || brokerLO.company || "",
+      brokerPhone: brokerLO.phoneNumber || brokerLO.phone || "",
+      brokerNmlsId: brokerLO.nmlsId || "",
+      brokerProcessorName: brokerProcessor.fullName || brokerProcessor.name || [brokerProcessor.firstName, brokerProcessor.lastName].filter(Boolean).join(" ") || "",
+      brokerProcessorEmail: brokerProcessor.emailAddress || brokerProcessor.email || "",
+      accountExecutiveName: ae.name,
+      accountExecutiveEmail: ae.email,
+      accountManagerName: am.name,
+      accountManagerEmail: am.email,
       propertyAddress,
       loanAmount: loan?.loanAmount || loanProduct?.loanAmount || null,
       loanType: loanProduct?.mortgageType || loan?.loanType || "",
@@ -401,6 +454,7 @@ function buildRetailStageChanged(webhook: VestaWebhookPayload, loan: LoanDetails
 
   const recipients: string[] = [];
   if (loan?.loEmail) recipients.push(loan.loEmail);
+  if (loan?.processorEmail) recipients.push(loan.processorEmail);
 
   return {
     subject: `Loan Stage Changed: ${newStage}${loanNumber ? ` \u2014 Loan #${loanNumber}` : ""} \u2014 ${borrowerName}`,
@@ -438,6 +492,9 @@ function buildWholesaleStageChanged(webhook: VestaWebhookPayload, loan: LoanDeta
 
   const recipients: string[] = [];
   if (loan?.brokerEmail) recipients.push(loan.brokerEmail);
+  if (loan?.brokerProcessorEmail) recipients.push(loan.brokerProcessorEmail);
+  if (loan?.accountExecutiveEmail) recipients.push(loan.accountExecutiveEmail);
+  if (loan?.accountManagerEmail) recipients.push(loan.accountManagerEmail);
 
   return {
     subject: `[UFF] Stage Update: ${newStage}${loanNumber ? ` \u2014 Loan #${loanNumber}` : ""} \u2014 ${borrowerName}`,
@@ -658,6 +715,7 @@ function buildRetailUnderwriterDecision(webhook: VestaWebhookPayload, loan: Loan
 
   const recipients: string[] = [];
   if (loan?.loEmail) recipients.push(loan.loEmail);
+  if (loan?.processorEmail) recipients.push(loan.processorEmail);
 
   return {
     subject: `${config.subjectPrefix}${loanNumber ? ` \u2014 Loan #${loanNumber}` : ""} \u2014 ${borrowerName}`,
@@ -713,6 +771,9 @@ function buildWholesaleUnderwriterDecision(webhook: VestaWebhookPayload, loan: L
 
   const recipients: string[] = [];
   if (loan?.brokerEmail) recipients.push(loan.brokerEmail);
+  if (loan?.brokerProcessorEmail) recipients.push(loan.brokerProcessorEmail);
+  if (loan?.accountExecutiveEmail) recipients.push(loan.accountExecutiveEmail);
+  if (loan?.accountManagerEmail) recipients.push(loan.accountManagerEmail);
 
   return {
     subject: `[UFF] ${config.subjectPrefix}${loanNumber ? ` \u2014 Loan #${loanNumber}` : ""} \u2014 ${borrowerName}`,
@@ -784,9 +845,17 @@ async function logWebhookEvent(
           borrowerEmail: loanDetails.borrowerEmail,
           loFullName: loanDetails.loFullName,
           loEmail: loanDetails.loEmail,
+          processorName: loanDetails.processorName,
+          processorEmail: loanDetails.processorEmail,
           brokerName: loanDetails.brokerName,
           brokerEmail: loanDetails.brokerEmail,
           brokerCompany: loanDetails.brokerCompany,
+          brokerProcessorName: loanDetails.brokerProcessorName,
+          brokerProcessorEmail: loanDetails.brokerProcessorEmail,
+          accountExecutiveName: loanDetails.accountExecutiveName,
+          accountExecutiveEmail: loanDetails.accountExecutiveEmail,
+          accountManagerName: loanDetails.accountManagerName,
+          accountManagerEmail: loanDetails.accountManagerEmail,
           propertyAddress: loanDetails.propertyAddress,
           loanAmount: loanDetails.loanAmount,
           loanType: loanDetails.loanType,
