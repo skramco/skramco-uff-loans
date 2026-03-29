@@ -33,6 +33,8 @@ import {
   Shield,
   Home,
   AlertCircle,
+  PartyPopper,
+  Trophy,
   Loader2,
   Upload,
   LayoutDashboard,
@@ -180,6 +182,10 @@ export default function MyLoanPage() {
   const loanType = hasVesta ? (vestaLoan.loanProduct?.mortgageType || vestaLoan.loanType) : ld.loanType;
   const displayStatus = hasVesta ? (vestaLoan.currentLoanStage || sbLoan?.status || 'Submitted') : (sbLoan?.status || 'Submitted');
   const currentStageIdx = resolveStageIndex(sbLoan?.status || '', hasVesta ? vestaLoan.currentLoanStage : undefined);
+  const latestLoanDecision = hasVesta ? String(vestaLoan?.latestLoanDecision || '') : '';
+  const isConditionallyApproved = latestLoanDecision.toLowerCase().includes('conditionallyapprove');
+  const conditionalMilestoneReached = isConditionallyApproved || currentStageIdx >= 4;
+  const clearToCloseMilestoneReached = currentStageIdx >= 5;
 
   const submittedDate = sbLoan
     ? new Date(sbLoan.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -189,11 +195,17 @@ export default function MyLoanPage() {
   const clearedConditions = sbConditions.filter((c) => c.status === 'Cleared');
 
   // Only show tabs that have data
-  const visibleTabs = ALL_TABS.filter((t) => {
-    if (t.id === 'financials') return hasVesta;
-    if (t.id === 'preapproval') return hasVesta;
-    return true;
-  });
+  const visibleTabs = ALL_TABS
+    .filter((t) => {
+      if (t.id === 'financials') return hasVesta;
+      if (t.id === 'preapproval') return hasVesta;
+      return true;
+    })
+    .map((t) =>
+      t.id === 'preapproval'
+        ? { ...t, label: isConditionallyApproved ? 'Conditional Approval' : 'Pre-Approval' }
+        : t
+    );
 
   /* ═══════════════════════════════════════════════════
      RENDER
@@ -206,7 +218,7 @@ export default function MyLoanPage() {
           <Link to="/" className="flex items-center gap-3 text-gray-900 hover:text-gray-700 transition-colors">
             <img src="/uff_logo.svg" alt="UFF Logo" className="h-8 w-auto" />
             <div className="h-6 w-px bg-gray-200" />
-            <span className="font-bold text-sm">Loan Command Center</span>
+            <span className="font-bold text-sm">Borrower Command Center</span>
           </Link>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600 hidden sm:block">{borrowerFullName}</span>
@@ -276,53 +288,91 @@ export default function MyLoanPage() {
           <div className="hidden sm:block">
             <div className="relative flex items-start justify-between">
               <div className="absolute top-4 left-0 right-0 h-0.5 bg-gray-200 z-0" />
-              <div className="absolute top-4 left-0 h-0.5 bg-red-600 z-0 transition-all duration-500"
+              <div className={`absolute top-4 left-0 h-0.5 z-0 transition-all duration-500 ${clearToCloseMilestoneReached ? 'bg-emerald-700' : 'bg-red-600'}`}
                 style={{ width: currentStageIdx >= 0 ? `${(currentStageIdx / (PIPELINE_STAGES.length - 1)) * 100}%` : '0%' }} />
               {PIPELINE_STAGES.map((stage, idx) => {
-                const done = idx < currentStageIdx;
-                const active = idx === currentStageIdx;
+                const isConditionalStage = stage.key === 'approved';
+                const isClearToCloseStage = stage.key === 'closing';
+                const conditionalComplete = isConditionalStage && conditionalMilestoneReached;
+                const finalVictoryComplete = isClearToCloseStage && clearToCloseMilestoneReached;
+                const done = idx < currentStageIdx || conditionalComplete || finalVictoryComplete;
+                const active = idx === currentStageIdx && !conditionalComplete && !finalVictoryComplete;
                 return (
                   <div key={stage.key} className="relative z-10 flex flex-col items-center" style={{ width: `${100 / PIPELINE_STAGES.length}%` }}>
-                    {done ? (
+                    {finalVictoryComplete ? (
+                      <div className="w-9 h-9 rounded-full bg-emerald-700 flex items-center justify-center ring-4 ring-emerald-100 shadow-md shadow-emerald-200/70">
+                        <Trophy className="w-4.5 h-4.5 text-amber-100" />
+                      </div>
+                    ) : conditionalComplete ? (
+                      <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center ring-4 ring-emerald-100">
+                        <PartyPopper className="w-4 h-4 text-white" />
+                      </div>
+                    ) : done ? (
                       <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center"><CheckCircle2 className="w-5 h-5 text-white" /></div>
                     ) : active ? (
                       <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center ring-4 ring-red-100"><Clock className="w-4 h-4 text-white" /></div>
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-300 flex items-center justify-center"><Circle className="w-3 h-3 text-gray-300" /></div>
                     )}
-                    <span className={`mt-2 text-xs font-medium text-center leading-tight px-1 ${active ? 'text-red-700 font-semibold' : done ? 'text-gray-700' : 'text-gray-400'}`}>
+                    <span className={`mt-2 text-xs font-medium text-center leading-tight px-1 ${finalVictoryComplete ? 'text-emerald-900 font-bold' : conditionalComplete ? 'text-emerald-700 font-semibold' : active ? 'text-red-700 font-semibold' : done ? 'text-gray-700' : 'text-gray-400'}`}>
                       {stage.label}
                     </span>
                   </div>
                 );
               })}
             </div>
-            <div className="mt-5 bg-red-50 border border-red-100 rounded-lg p-4">
-              <p className="text-sm font-semibold text-red-800 mb-1">Current Stage: {PIPELINE_STAGES[currentStageIdx]?.label}</p>
-              <p className="text-sm text-red-700">{PIPELINE_STAGES[currentStageIdx]?.desc}</p>
-            </div>
+            {clearToCloseMilestoneReached ? (
+              <div className="mt-5 bg-gradient-to-r from-emerald-50 to-emerald-100/60 border-2 border-emerald-300 rounded-lg p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <Trophy className="w-4 h-4 text-emerald-800" />
+                  <p className="text-sm font-bold text-emerald-900">Final Victory: Clear to Close</p>
+                </div>
+                <p className="text-sm text-emerald-800">Outstanding — your loan has reached Clear to Close, the final major milestone before closing.</p>
+              </div>
+            ) : conditionalMilestoneReached ? (
+              <div className="mt-5 bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <PartyPopper className="w-4 h-4 text-emerald-700" />
+                  <p className="text-sm font-semibold text-emerald-800">Milestone Achieved: Conditional Approval</p>
+                </div>
+                <p className="text-sm text-emerald-700">Great progress — your file has reached Conditional Approval. Next major milestone: Clear to Close.</p>
+              </div>
+            ) : (
+              <div className="mt-5 bg-red-50 border border-red-100 rounded-lg p-4">
+                <p className="text-sm font-semibold text-red-800 mb-1">Current Stage: {PIPELINE_STAGES[currentStageIdx]?.label}</p>
+                <p className="text-sm text-red-700">{PIPELINE_STAGES[currentStageIdx]?.desc}</p>
+              </div>
+            )}
           </div>
 
           {/* Mobile */}
           <div className="sm:hidden space-y-0">
             {PIPELINE_STAGES.map((stage, idx) => {
-              const done = idx < currentStageIdx;
-              const active = idx === currentStageIdx;
+              const isConditionalStage = stage.key === 'approved';
+              const isClearToCloseStage = stage.key === 'closing';
+              const conditionalComplete = isConditionalStage && conditionalMilestoneReached;
+              const finalVictoryComplete = isClearToCloseStage && clearToCloseMilestoneReached;
+              const done = idx < currentStageIdx || conditionalComplete || finalVictoryComplete;
+              const active = idx === currentStageIdx && !conditionalComplete && !finalVictoryComplete;
               const isLast = idx === PIPELINE_STAGES.length - 1;
               return (
                 <div key={stage.key} className="flex gap-3">
                   <div className="flex flex-col items-center">
-                    {done ? (
+                    {finalVictoryComplete ? (
+                      <div className="w-8 h-8 rounded-full bg-emerald-700 flex items-center justify-center flex-shrink-0 ring-4 ring-emerald-100 shadow-md shadow-emerald-200/70"><Trophy className="w-4 h-4 text-amber-100" /></div>
+                    ) : conditionalComplete ? (
+                      <div className="w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center flex-shrink-0 ring-4 ring-emerald-100"><PartyPopper className="w-3.5 h-3.5 text-white" /></div>
+                    ) : done ? (
                       <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center flex-shrink-0"><CheckCircle2 className="w-4 h-4 text-white" /></div>
                     ) : active ? (
                       <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center flex-shrink-0 ring-4 ring-red-100"><Clock className="w-3.5 h-3.5 text-white" /></div>
                     ) : (
                       <div className="w-7 h-7 rounded-full bg-white border-2 border-gray-300 flex items-center justify-center flex-shrink-0"><Circle className="w-3 h-3 text-gray-300" /></div>
                     )}
-                    {!isLast && <div className={`w-0.5 flex-1 min-h-[20px] ${done ? 'bg-red-600' : 'bg-gray-200'}`} />}
+                    {!isLast && <div className={`w-0.5 flex-1 min-h-[20px] ${finalVictoryComplete ? 'bg-emerald-700' : conditionalComplete ? 'bg-emerald-600' : done ? 'bg-red-600' : 'bg-gray-200'}`} />}
                   </div>
                   <div className="pb-5">
-                    <p className={`text-sm ${active ? 'text-red-700 font-semibold' : done ? 'text-gray-700' : 'text-gray-400'}`}>{stage.label}</p>
+                    <p className={`text-sm ${finalVictoryComplete ? 'text-emerald-900 font-bold' : conditionalComplete ? 'text-emerald-700 font-semibold' : active ? 'text-red-700 font-semibold' : done ? 'text-gray-700' : 'text-gray-400'}`}>{stage.label}</p>
                     {active && <p className="text-xs text-red-600 mt-1 leading-relaxed">{stage.desc}</p>}
                   </div>
                 </div>

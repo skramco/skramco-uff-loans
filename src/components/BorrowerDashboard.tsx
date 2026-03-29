@@ -48,13 +48,17 @@ function VestaDashboard() {
     'Borrower';
 
   const isPurchase = loan.loanPurpose === 'Purchase';
+  const latestLoanDecision = String(loan?.latestLoanDecision || '');
+  const isConditionallyApproved = latestLoanDecision.toLowerCase().includes('conditionallyapprove');
 
   const tabs = [
     { key: 'overview' as const, label: 'Overview' },
     { key: 'financials' as const, label: 'Financials' },
     { key: 'conditions' as const, label: 'Conditions' },
     { key: 'details' as const, label: 'Details' },
-    ...(isPurchase ? [{ key: 'preapproval' as const, label: 'Pre-Approval' }] : []),
+    ...(isPurchase
+      ? [{ key: 'preapproval' as const, label: isConditionallyApproved ? 'Conditional Approval' : 'Pre-Approval' }]
+      : []),
   ];
 
   return (
@@ -66,7 +70,7 @@ function VestaDashboard() {
               <div className="w-9 h-9 bg-gradient-to-br from-red-600 to-red-700 rounded-lg flex items-center justify-center">
                 <Home className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-lg font-bold text-gray-900 hidden sm:block">Loan Command Center</h1>
+              <h1 className="text-lg font-bold text-gray-900 hidden sm:block">Borrower Command Center</h1>
             </div>
 
             <div className="flex items-center gap-2 sm:gap-4">
@@ -216,7 +220,7 @@ function SupabaseDashboard() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
               <Home className="w-6 h-6 text-red-600" />
-              <h1 className="text-xl font-bold text-gray-900">Loan Command Center</h1>
+              <h1 className="text-xl font-bold text-gray-900">Borrower Command Center</h1>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-gray-700">

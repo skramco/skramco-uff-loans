@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import ComplianceFooter from '../../components/layout/ComplianceFooter';
 import { useBorrowerSession } from '../../contexts/BorrowerSessionContext';
 import { extractBorrower } from '../../services/loanDataHelpers';
@@ -32,6 +32,13 @@ export default function DashboardLayout() {
 
   const loan = session.loan;
   const borrower = extractBorrower(loan);
+  const latestLoanDecision = String(loan?.latestLoanDecision || '');
+  const isConditionallyApproved = latestLoanDecision.toLowerCase().includes('conditionallyapprove');
+  const visibleTabs = tabs.map((tab) =>
+    tab.id === 'preapproval'
+      ? { ...tab, label: isConditionallyApproved ? 'Conditional Approval' : 'Pre-Approval' }
+      : tab
+  );
 
   const handleLogout = () => {
     logout();
@@ -56,7 +63,7 @@ export default function DashboardLayout() {
           <Link to="/" className="flex items-center gap-3 text-gray-900 hover:text-gray-700 transition-colors">
             <img src="/uff_logo.svg" alt="UFF Logo" className="h-8 w-auto" />
             <div className="h-6 w-px bg-gray-200" />
-            <span className="font-bold text-sm">Loan Command Center</span>
+            <span className="font-bold text-sm">Borrower Command Center</span>
           </Link>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600 hidden sm:block">{borrower.fullName}</span>
@@ -78,7 +85,7 @@ export default function DashboardLayout() {
         </div>
 
         <div className="flex items-center gap-1 mb-8 overflow-x-auto pb-1">
-          {tabs.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActive(tab.id)}

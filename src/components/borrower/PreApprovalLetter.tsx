@@ -1,9 +1,10 @@
 import { forwardRef } from 'react';
-import { formatCurrency, formatPercent, formatDate } from './formatters';
+import { formatCurrency, formatPercent } from './formatters';
 
 interface PreApprovalLetterProps {
   loan: any;
   companyName?: string;
+  isConditionalApproval?: boolean;
 }
 
 function extractLetterData(loan: any) {
@@ -85,8 +86,13 @@ function extractLetterData(loan: any) {
 }
 
 const PreApprovalLetter = forwardRef<HTMLDivElement, PreApprovalLetterProps>(
-  ({ loan, companyName = 'United Fidelity Funding Corp' }, ref) => {
+  ({ loan, companyName = 'United Fidelity Funding Corp', isConditionalApproval = false }, ref) => {
     const d = extractLetterData(loan);
+    const letterTitle = isConditionalApproval ? 'Conditional Loan Approval' : 'Pre-Approval Letter';
+    const summaryTitle = isConditionalApproval ? 'Conditional Approval Summary' : 'Pre-Approval Summary';
+    const summaryAmountLabel = isConditionalApproval ? 'Conditionally Approved Amount' : 'Pre-Approved Amount';
+    const qualificationLabel = isConditionalApproval ? 'conditionally approved' : 'pre-approved';
+    const docLabel = isConditionalApproval ? 'conditional approval' : 'pre-approval';
 
     return (
       <div ref={ref} className="bg-white" id="preapproval-letter">
@@ -121,7 +127,7 @@ const PreApprovalLetter = forwardRef<HTMLDivElement, PreApprovalLetterProps>(
 
           <div className="text-center mb-10">
             <div className="inline-block bg-slate-800 text-white px-8 py-3 rounded-lg">
-              <h2 className="text-xl font-bold tracking-wide uppercase">Pre-Approval Letter</h2>
+              <h2 className="text-xl font-bold tracking-wide uppercase">{letterTitle}</h2>
             </div>
           </div>
 
@@ -136,17 +142,17 @@ const PreApprovalLetter = forwardRef<HTMLDivElement, PreApprovalLetterProps>(
               {d.coBorrowerName && (
                 <> and <span className="font-semibold text-slate-900">{d.coBorrowerName}</span></>
               )}{' '}
-              {d.coBorrowerName ? 'have' : 'has'} been pre-approved for mortgage financing
+              {d.coBorrowerName ? 'have' : 'has'} been {qualificationLabel} for mortgage financing
               based on a thorough review of {d.coBorrowerName ? 'their' : 'their'} financial qualifications,
               including credit history, income verification, assets, and debt obligations.
             </p>
 
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 my-8">
               <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">
-                Pre-Approval Summary
+                {summaryTitle}
               </h3>
               <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                <SummaryRow label="Pre-Approved Amount" value={formatCurrency(d.loanAmount)} highlight />
+                <SummaryRow label={summaryAmountLabel} value={formatCurrency(d.loanAmount)} highlight />
                 <SummaryRow
                   label="Maximum Purchase Price"
                   value={formatCurrency(d.purchasePrice)}
@@ -189,7 +195,7 @@ const PreApprovalLetter = forwardRef<HTMLDivElement, PreApprovalLetterProps>(
             )}
 
             <p>
-              This pre-approval is based on the information provided by the borrower{d.coBorrowerName ? 's' : ''} and
+              This {docLabel} is based on the information provided by the borrower{d.coBorrowerName ? 's' : ''} and
               is subject to the following conditions:
             </p>
 
@@ -211,7 +217,7 @@ const PreApprovalLetter = forwardRef<HTMLDivElement, PreApprovalLetterProps>(
             </p>
 
             <p>
-              This pre-approval letter is valid through{' '}
+              This {docLabel} letter is valid through{' '}
               <span className="font-semibold text-slate-900">{d.expirationDate}</span>{' '}
               and is subject to final underwriting approval. We are confident in{' '}
               {d.coBorrowerName ? 'these borrowers\'' : 'this borrower\'s'} ability to secure financing
@@ -220,7 +226,7 @@ const PreApprovalLetter = forwardRef<HTMLDivElement, PreApprovalLetterProps>(
 
             <p>
               Please do not hesitate to contact me directly with any questions regarding this
-              pre-approval or the borrower{d.coBorrowerName ? 's\'' : '\'s'} qualifications.
+              {docLabel} or the borrower{d.coBorrowerName ? 's\'' : '\'s'} qualifications.
             </p>
           </div>
 
@@ -244,7 +250,7 @@ const PreApprovalLetter = forwardRef<HTMLDivElement, PreApprovalLetterProps>(
 
           <div className="mt-10 pt-4 border-t border-slate-100 text-xs text-slate-400 leading-relaxed">
             <p>
-              This pre-approval letter is not a commitment to lend. Final loan approval is subject to
+              This {docLabel} letter is not a commitment to lend. Final loan approval is subject to
               satisfactory completion of the underwriting process, including but not limited to property
               appraisal, title review, and verification of all borrower information. Interest rates and
               terms are subject to change without notice. This letter does not guarantee any specific
@@ -261,16 +267,26 @@ PreApprovalLetter.displayName = 'PreApprovalLetter';
 export default PreApprovalLetter;
 export { extractLetterData };
 
-export function buildPrintHtml(loan: any, companyName = 'United Fidelity Funding Corp'): string {
+export function buildPrintHtml(
+  loan: any,
+  companyName = 'United Fidelity Funding Corp',
+  options?: { isConditionalApproval?: boolean }
+): string {
   const d = extractLetterData(loan);
+  const isConditionalApproval = options?.isConditionalApproval ?? false;
   const fc = formatCurrency;
   const fp = formatPercent;
+  const letterTitle = isConditionalApproval ? 'Conditional Loan Approval' : 'Pre-Approval Letter';
+  const summaryTitle = isConditionalApproval ? 'Conditional Approval Summary' : 'Pre-Approval Summary';
+  const summaryAmountLabel = isConditionalApproval ? 'Conditionally Approved Amount' : 'Pre-Approved Amount';
+  const qualificationLabel = isConditionalApproval ? 'conditionally approved' : 'pre-approved';
+  const docLabel = isConditionalApproval ? 'conditional approval' : 'pre-approval';
 
   const summaryRows: string[] = [];
   const addRow = (label: string, value: string, hl = false) => {
     summaryRows.push(`<div style="display:flex;flex-direction:column;"><span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">${label}</span><span style="font-size:${hl ? '18px' : '15px'};font-weight:600;color:${hl ? '#0f172a' : '#1e293b'};">${value}</span></div>`);
   };
-  addRow('Pre-Approved Amount', fc(d.loanAmount), true);
+  addRow(summaryAmountLabel, fc(d.loanAmount), true);
   addRow('Maximum Purchase Price', fc(d.purchasePrice), true);
   if (d.mortgageType) addRow('Loan Type', d.mortgageType);
   if (d.termYears) addRow('Loan Term', `${d.termYears}-Year Fixed`);
@@ -295,7 +311,7 @@ export function buildPrintHtml(loan: any, companyName = 'United Fidelity Funding
   const coLine = d.coBorrowerName ? ` and <strong style="color:#0f172a;">${d.coBorrowerName}</strong>` : '';
 
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Pre-Approval Letter - ${d.borrowerName}</title>
+<html><head><meta charset="utf-8"><title>${letterTitle} - ${d.borrowerName}</title>
 <style>
   @page { margin: 0.5in 0.75in; }
   body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #334155; margin: 0; padding: 40px 32px; max-width: 8.5in; margin: 0 auto; }
@@ -307,15 +323,15 @@ export function buildPrintHtml(loan: any, companyName = 'United Fidelity Funding
   <div><h1 style="font-size:22px;font-weight:700;color:#1e293b;margin:0;">${companyName}</h1>${d.branchName ? `<p style="font-size:13px;color:#64748b;margin:4px 0 0;">${d.branchName}</p>` : ''}</div>
   <div style="text-align:right;font-size:13px;color:#64748b;">${d.loanNumber ? `<p style="margin:0;">Loan #${d.loanNumber}</p>` : ''}<p style="margin:0;">${d.issueDate}</p></div>
 </div>
-<div style="text-align:center;margin-bottom:36px;"><div style="display:inline-block;background:#1e293b;color:white;padding:12px 32px;border-radius:8px;"><h2 style="margin:0;font-size:18px;letter-spacing:0.05em;text-transform:uppercase;">Pre-Approval Letter</h2></div></div>
+<div style="text-align:center;margin-bottom:36px;"><div style="display:inline-block;background:#1e293b;color:white;padding:12px 32px;border-radius:8px;"><h2 style="margin:0;font-size:18px;letter-spacing:0.05em;text-transform:uppercase;">${letterTitle}</h2></div></div>
 <p>To Whom It May Concern,</p>
-<p>This letter confirms that <strong style="color:#0f172a;">${d.borrowerName}</strong>${coLine} ${d.coBorrowerName ? 'have' : 'has'} been pre-approved for mortgage financing based on a thorough review of their financial qualifications, including credit history, income verification, assets, and debt obligations.</p>
+<p>This letter confirms that <strong style="color:#0f172a;">${d.borrowerName}</strong>${coLine} ${d.coBorrowerName ? 'have' : 'has'} been ${qualificationLabel} for mortgage financing based on a thorough review of their financial qualifications, including credit history, income verification, assets, and debt obligations.</p>
 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin:24px 0;">
-  <h3 style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 16px;">Pre-Approval Summary</h3>
+  <h3 style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 16px;">${summaryTitle}</h3>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px 32px;">${summaryRows.join('')}</div>
 </div>
 ${propBlock}
-<p>This pre-approval is based on the information provided by the borrower${pl} and is subject to the following conditions:</p>
+<p>This ${docLabel} is based on the information provided by the borrower${pl} and is subject to the following conditions:</p>
 <ul style="color:#475569;padding-left:24px;">
   <li>Satisfactory appraisal of the subject property at or above the agreed purchase price</li>
   <li>Clear title and satisfactory title insurance commitment</li>
@@ -326,8 +342,8 @@ ${propBlock}
   <li>All required documentation must be provided and verified prior to final loan approval</li>
 </ul>
 <p>The borrower${plHave} ${qualStr}.</p>
-<p>This pre-approval letter is valid through <strong style="color:#0f172a;">${d.expirationDate}</strong> and is subject to final underwriting approval. We are confident in ${plThese} ability to secure financing and complete a timely closing.</p>
-<p>Please do not hesitate to contact me directly with any questions regarding this pre-approval or the borrower${plPoss} qualifications.</p>
+<p>This ${docLabel} letter is valid through <strong style="color:#0f172a;">${d.expirationDate}</strong> and is subject to final underwriting approval. We are confident in ${plThese} ability to secure financing and complete a timely closing.</p>
+<p>Please do not hesitate to contact me directly with any questions regarding this ${docLabel} or the borrower${plPoss} qualifications.</p>
 <div style="margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;">
   <p style="margin:0 0 20px;">Sincerely,</p>
   ${d.originatorName ? `<p style="font-size:16px;font-weight:600;color:#0f172a;margin:0;">${d.originatorName}</p>` : ''}
@@ -337,7 +353,7 @@ ${propBlock}
   <p style="font-size:13px;color:#64748b;margin:4px 0 0;">${[d.originatorEmail, d.originatorPhone].filter(Boolean).join(' | ')}</p>
 </div>
 <div style="margin-top:40px;padding-top:16px;border-top:1px solid #f1f5f9;font-size:11px;color:#94a3b8;line-height:1.5;">
-  <p>This pre-approval letter is not a commitment to lend. Final loan approval is subject to satisfactory completion of the underwriting process, including but not limited to property appraisal, title review, and verification of all borrower information. Interest rates and terms are subject to change without notice. This letter does not guarantee any specific interest rate or loan terms. Equal Housing Lender.</p>
+  <p>This ${docLabel} letter is not a commitment to lend. Final loan approval is subject to satisfactory completion of the underwriting process, including but not limited to property appraisal, title review, and verification of all borrower information. Interest rates and terms are subject to change without notice. This letter does not guarantee any specific interest rate or loan terms. Equal Housing Lender.</p>
 </div>
 </body></html>`;
 }
