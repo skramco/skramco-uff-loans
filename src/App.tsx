@@ -14,6 +14,8 @@ import ArticlePage from './pages/ArticlePage';
 import ReviewsPage from './pages/ReviewsPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfUsePage from './pages/TermsOfUsePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import ApplicationPage from './components/application/ApplicationPage';
@@ -60,9 +62,12 @@ export default function App() {
         <Route path="/learn" element={<PublicLayout><LearnPage /></PublicLayout>} />
         <Route path="/learn/market-pulse" element={<PublicLayout><MarketPulsePage /></PublicLayout>} />
         <Route path="/learn/:slug" element={<PublicLayout><ArticlePage /></PublicLayout>} />
+        <Route path="/products" element={<PublicLayout><ReviewsPage /></PublicLayout>} />
         <Route path="/reviews" element={<PublicLayout><ReviewsPage /></PublicLayout>} />
         <Route path="/about" element={<PublicLayout><AboutPage /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
+        <Route path="/privacy-policy" element={<PublicLayout><PrivacyPolicyPage /></PublicLayout>} />
+        <Route path="/terms-of-use" element={<PublicLayout><TermsOfUsePage /></PublicLayout>} />
 
         <Route path="*" element={<PublicLayout><HomePage /></PublicLayout>} />
       </Routes>

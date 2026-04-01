@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Phone, ChevronDown, Globe } from 'lucide-react';
+import { Menu, X, Phone } from 'lucide-react';
 
 const navLinks = [
   { label: 'Buy', href: '/buy' },
   { label: 'Refinance', href: '/refinance' },
-  { label: 'Use Equity', href: '/equity' },
   { label: 'Rates', href: '/rates' },
   { label: 'Calculators', href: '/calculators' },
   { label: 'Learn', href: '/learn' },
@@ -61,10 +60,6 @@ export default function Header() {
           </nav>
 
           <div className="hidden lg:flex items-center gap-3">
-            <button className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded transition-colors ${textColor} opacity-70 hover:opacity-100`}>
-              <Globe className="w-3.5 h-3.5" />
-              ES
-            </button>
             <a
               href="tel:855-95-32453"
               className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${textColor} hover:opacity-80`}

@@ -91,8 +91,8 @@ export default function ComplianceFooter({ className = '' }: { className?: strin
         <div className="flex items-center justify-between text-[10px] text-gray-400">
           <span>&copy; {new Date().getFullYear()} United Fidelity Funding Corp. All rights reserved.</span>
           <div className="flex items-center gap-4">
-            <a href="/about" className="hover:text-gray-500 underline">Privacy Policy</a>
-            <a href="/about" className="hover:text-gray-500 underline">Terms of Use</a>
+            <a href="/privacy-policy" className="hover:text-gray-500 underline">Privacy Policy</a>
+            <a href="/terms-of-use" className="hover:text-gray-500 underline">Terms of Use</a>
             <a
               href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/34381"
               target="_blank"

@@ -260,7 +260,7 @@ function StepGoal({ data, update }: { data: FlowData; update: (p: Partial<FlowDa
   const options: { value: Intent; icon: typeof Home; label: string; desc: string }[] = [
     { value: 'buy', icon: Home, label: 'Buy a home', desc: 'First-time or repeat buyer' },
     { value: 'refi', icon: RefreshCw, label: 'Refinance', desc: 'Lower rate, shorter term, or cash out' },
-    { value: 'equity', icon: Wallet, label: 'Use my equity', desc: 'HELOC or home equity loan' },
+    { value: 'equity', icon: Wallet, label: 'Cash out', desc: 'Get cash for home improvements or renovations' },
   ];
 
   return (

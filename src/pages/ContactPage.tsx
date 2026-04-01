@@ -28,12 +28,12 @@ export default function ContactPage() {
                       <p className="text-sm text-gray-500">Mon-Fri 8am-8pm, Sat 9am-5pm ET</p>
                     </div>
                   </a>
-                  <a href="mailto:info@unitedfidelityfunding.com" className="flex items-start gap-4 group">
+                  <a href="mailto:info@uff.loans" className="flex items-start gap-4 group">
                     <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-brand-100 transition-colors">
                       <Mail className="w-5 h-5 text-brand-600" />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">info@unitedfidelityfunding.com</p>
+                      <p className="font-semibold text-gray-900">info@uff.loans</p>
                       <p className="text-sm text-gray-500">We respond within 1 business day</p>
                     </div>
                   </a>

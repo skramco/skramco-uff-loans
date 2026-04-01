@@ -9,7 +9,7 @@ export default function CockpitPreview() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-50 text-brand-700 text-sm font-medium rounded-full mb-6">
               <Bell className="w-3.5 h-3.5" />
-              Loan Command Center
+              Borrower Command Center
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
               Your loan, your dashboard.{' '}
@@ -34,7 +34,7 @@ export default function CockpitPreview() {
                 <div className="w-3 h-3 rounded-full bg-red-400" />
                 <div className="w-3 h-3 rounded-full bg-yellow-400" />
                 <div className="w-3 h-3 rounded-full bg-green-400" />
-                <span className="text-gray-300 text-xs ml-2 font-medium">Loan Command Center</span>
+                <span className="text-gray-300 text-xs ml-2 font-medium">Borrower Command Center</span>
               </div>
 
               <div className="p-6 space-y-5">

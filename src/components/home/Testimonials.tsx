@@ -1,73 +1,68 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Star, Quote } from 'lucide-react';
-import { testimonials } from '../../data/testimonials';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Briefcase, Building2, Landmark, PiggyBank, Shield, UserRound } from 'lucide-react';
+import { borrowerSegments } from '../../data/borrowerProducts';
 
 export default function Testimonials() {
-  const [current, setCurrent] = useState(0);
-  const visible = typeof window !== 'undefined' && window.innerWidth >= 768 ? 3 : 1;
-
-  const prev = () => setCurrent((c) => (c === 0 ? testimonials.length - visible : c - 1));
-  const next = () => setCurrent((c) => (c >= testimonials.length - visible ? 0 : c + 1));
+  const previewSegments = borrowerSegments.slice(0, 6);
+  const iconMap = {
+    'Wage Earners': Briefcase,
+    'Self-Employed': Building2,
+    Veterans: Shield,
+    'First Time Homebuyers': UserRound,
+    Investors: Landmark,
+    'High Net Worth': PiggyBank,
+  } as const;
 
   return (
     <section className="section-padding bg-gray-50">
       <div className="container-wide">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
           <div>
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              What borrowers are saying
+              Products by borrower type
             </h2>
             <p className="text-lg text-gray-600 max-w-xl">
-              Real feedback from real people. Transparency goes both ways.
+              Start with your profile, then explore lending solutions built around how you earn, buy, and invest.
             </p>
           </div>
-          <div className="flex gap-2 mt-4 md:mt-0">
-            <button
-              onClick={prev}
-              className="p-2.5 rounded-full border border-gray-200 hover:bg-white hover:border-gray-300 transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
-            </button>
-            <button
-              onClick={next}
-              className="p-2.5 rounded-full border border-gray-200 hover:bg-white hover:border-gray-300 transition-colors"
-            >
-              <ChevronRight className="w-5 h-5 text-gray-600" />
-            </button>
-          </div>
-        </div>
-
-        <div className="overflow-hidden">
-          <div
-            className="flex transition-transform duration-500 ease-out gap-6"
-            style={{ transform: `translateX(-${current * (100 / visible + 2)}%)` }}
+          <Link
+            to="/products"
+            className="inline-flex items-center gap-2 text-brand-600 font-semibold hover:text-brand-700 transition-colors"
           >
-            {testimonials.map((t, i) => (
-              <div
-                key={i}
-                className="flex-none w-full md:w-[calc(33.333%-16px)] bg-white rounded-2xl border border-gray-200 p-8"
-              >
-                <Quote className="w-8 h-8 text-brand-200 mb-4" />
-                <p className="text-gray-700 leading-relaxed mb-6">{t.text}</p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-gray-900">{t.name}</p>
-                    <p className="text-sm text-gray-500">{t.location} &middot; {t.loanType}</p>
-                  </div>
-                  <div className="flex">
-                    {[...Array(t.rating)].map((_, j) => (
-                      <Star key={j} className="w-4 h-4 fill-accent-400 text-accent-400" />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+            View full product suite
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
 
-        <p className="text-xs text-gray-400 mt-6 text-center">
-          Sample testimonials for illustrative purposes only. Individual experiences may vary.
-        </p>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {previewSegments.map((segment) => {
+            const Icon = iconMap[segment.title as keyof typeof iconMap] ?? Briefcase;
+            return (
+              <Link
+                key={segment.slug}
+                to={`/products#${segment.slug}`}
+                className="bg-white rounded-2xl border border-gray-200 p-7 hover:border-brand-300 hover:shadow-lg transition-all group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-5">
+                  <Icon className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{segment.title}</h3>
+                <p className="text-sm text-gray-600 mb-5 leading-relaxed">{segment.summary}</p>
+                <div className="space-y-2 mb-5">
+                  {segment.products.slice(0, 2).map((product) => (
+                    <p key={product.name} className="text-sm text-gray-700">
+                      • {product.name}
+                    </p>
+                  ))}
+                </div>
+                <span className="inline-flex items-center gap-2 text-sm font-semibold text-brand-600 group-hover:text-brand-700">
+                  Explore options
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </section>
   );

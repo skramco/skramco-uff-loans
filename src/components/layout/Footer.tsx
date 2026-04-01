@@ -11,7 +11,7 @@ const footerLinks = {
   ],
   'Company': [
     { label: 'About Us', href: '/about' },
-    { label: 'Reviews', href: '/reviews' },
+    { label: 'Product Suite', href: '/products' },
     { label: 'Contact', href: '/contact' },
     { label: 'Careers', href: '/about' },
   ],
@@ -22,9 +22,9 @@ const footerLinks = {
     { label: 'Blog', href: '/learn' },
   ],
   'Legal': [
-    { label: 'Privacy Policy', href: '/about' },
-    { label: 'Terms of Use', href: '/about' },
-    { label: 'Licensing', href: '/about' },
+    { label: 'Privacy Policy', href: '/privacy-policy' },
+    { label: 'Terms of Use', href: '/terms-of-use' },
+    { label: 'Licensing', href: 'https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/34381', external: true },
     { label: 'NMLS Consumer Access', href: 'https://www.nmlsconsumeraccess.org', external: true },
   ],
 };
@@ -89,9 +89,9 @@ export default function Footer() {
                 <Phone className="w-4 h-4 text-brand-400" />
                 (855) 95-EAGLE
               </a>
-              <a href="mailto:info@unitedfidelityfunding.com" className="flex items-center gap-2 hover:text-white transition-colors">
+              <a href="mailto:info@uff.loans" className="flex items-center gap-2 hover:text-white transition-colors">
                 <Mail className="w-4 h-4 text-brand-400" />
-                info@unitedfidelityfunding.com
+                info@uff.loans
               </a>
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-brand-400 mt-0.5" />
@@ -292,10 +292,10 @@ export default function Footer() {
             <span className="text-gray-300 font-semibold">Consumer Complaints:</span> If you have a complaint, first
             contact United Fidelity Funding Corp. at (855) 95-EAGLE or{' '}
             <a
-              href="mailto:compliance@unitedfidelityfunding.com"
+              href="mailto:compliance@uff.loans"
               className="text-brand-400 hover:text-brand-300 underline"
             >
-              compliance@unitedfidelityfunding.com
+              compliance@uff.loans
             </a>.
             You may also contact the Consumer Financial Protection Bureau at{' '}
             <a

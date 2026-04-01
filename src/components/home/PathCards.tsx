@@ -18,8 +18,8 @@ const paths = [
   },
   {
     icon: Wallet,
-    title: 'Use my equity',
-    description: 'Access your home equity for renovations, debt consolidation, or cash out.',
+    title: 'Cash out',
+    description: 'Turn your home equity into cash for renovations, home improvements, and major projects.',
     href: '/start?intent=equity',
     color: 'bg-accent-50 text-accent-600',
   },
