@@ -19,13 +19,13 @@ export default function ContactPage() {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Contact info</h2>
                 <div className="space-y-5">
-                  <a href="tel:1-800-555-0199" className="flex items-start gap-4 group">
+                  <a href="tel:855-95-32453" className="flex items-start gap-4 group">
                     <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-brand-100 transition-colors">
                       <Phone className="w-5 h-5 text-brand-600" />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">(800) 555-0199</p>
-                      <p className="text-sm text-gray-500">Mon-Fri 8am-8pm, Sat 9am-5pm ET</p>
+                      <p className="font-semibold text-gray-900">(855) 95-EAGLE</p>
+                      <p className="text-sm text-gray-500">Mon-Fri 8am-8pm PT</p>
                     </div>
                   </a>
                   <a href="mailto:info@uff.loans" className="flex items-start gap-4 group">
@@ -42,8 +42,8 @@ export default function ContactPage() {
                       <MapPin className="w-5 h-5 text-brand-600" />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">123 Financial District</p>
-                      <p className="text-sm text-gray-500">Los Angeles, CA 90012</p>
+                      <p className="font-semibold text-gray-900">1300 NW Briarcliff Pkwy #275</p>
+                      <p className="text-sm text-gray-500">Kansas City, MO 64116</p>
                     </div>
                   </div>
                 </div>
