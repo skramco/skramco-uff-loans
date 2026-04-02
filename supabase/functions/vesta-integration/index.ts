@@ -361,6 +361,95 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
+const vestaJsonHeaders = (config: VestaConfig) => ({
+  Accept: "application/json",
+  Authorization: `Token ${config.apiKey}`,
+  "x-Api-Version": config.apiVersion,
+});
+
+/**
+ * 1) GET loan → processVersionId
+ * 2) GET admin-config/{processVersionId}/document-types → id where name === "Uncategorized"
+ */
+async function resolveUncategorizedDocumentTypeId(
+  config: VestaConfig,
+  baseUrl: string,
+  vestaLoanId: string
+): Promise<{ documentTypeId: string } | { error: string; status: number }> {
+  const loanUrl = `${baseUrl}/loans/${encodeURIComponent(vestaLoanId)}`;
+  const loanRes = await fetch(loanUrl, {
+    method: "GET",
+    headers: vestaJsonHeaders(config),
+  });
+
+  if (!loanRes.ok) {
+    const t = await loanRes.text();
+    return {
+      error: `Could not load loan for document upload (${loanRes.status}): ${t}`,
+      status: loanRes.status,
+    };
+  }
+
+  const loan = await loanRes.json();
+  const processVersionId =
+    loan?.processVersionId ??
+    loan?.process_version_id ??
+    loan?.processVersion?.id ??
+    loan?.processVersion?.processVersionId;
+
+  if (!processVersionId || typeof processVersionId !== "string") {
+    return {
+      error:
+        "Loan response did not include processVersionId; cannot resolve document type.",
+      status: 422,
+    };
+  }
+
+  const typesUrl = `${baseUrl}/admin-config/${encodeURIComponent(processVersionId)}/document-types`;
+  const typesRes = await fetch(typesUrl, {
+    method: "GET",
+    headers: vestaJsonHeaders(config),
+  });
+
+  if (!typesRes.ok) {
+    const t = await typesRes.text();
+    return {
+      error: `Could not load document types (${typesRes.status}): ${t}`,
+      status: typesRes.status,
+    };
+  }
+
+  const docTypesPayload = await typesRes.json();
+  const list: unknown[] = Array.isArray(docTypesPayload)
+    ? docTypesPayload
+    : Array.isArray(docTypesPayload?.items)
+      ? docTypesPayload.items
+      : Array.isArray(docTypesPayload?.documentTypes)
+        ? docTypesPayload.documentTypes
+        : [];
+
+  const uncategorized = list.find((d: unknown) => {
+    if (!d || typeof d !== "object") return false;
+    const o = d as Record<string, unknown>;
+    const name = o.name;
+    return (
+      typeof name === "string" &&
+      name.trim().toLowerCase() === "uncategorized"
+    );
+  }) as Record<string, unknown> | undefined;
+
+  const id = uncategorized?.id;
+  if (!id || typeof id !== "string") {
+    return {
+      error:
+        'No document type with name "Uncategorized" found for this loan process version.',
+      status: 422,
+    };
+  }
+
+  return { documentTypeId: id };
+}
+
 async function handleUploadDocument(
   config: VestaConfig,
   vestaLoanId: string,
@@ -380,6 +469,16 @@ async function handleUploadDocument(
   const baseUrl = config.apiUrl.replace(/\/+$/, "");
 
   try {
+    const resolved = await resolveUncategorizedDocumentTypeId(
+      config,
+      baseUrl,
+      vestaLoanId
+    );
+    if ("error" in resolved) {
+      return errorResponse(resolved.error, resolved.status);
+    }
+    const { documentTypeId } = resolved;
+
     const fileBytes = base64ToUint8Array(fileBase64);
 
     const metadata = JSON.stringify({
@@ -389,7 +488,7 @@ async function handleUploadDocument(
           entityType: "Loan",
         },
       ],
-      documentTypeId: "b16f5ae4-331e-4c46-85fa-537d8062a7af",
+      documentTypeId,
       status: "Uploaded",
     });
 
