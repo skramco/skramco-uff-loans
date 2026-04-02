@@ -368,8 +368,9 @@ const vestaJsonHeaders = (config: VestaConfig) => ({
 });
 
 /**
- * 1) GET loan → processVersionId
- * 2) GET admin-config/{processVersionId}/document-types → id where name === "Uncategorized"
+ * Vesta contract for borrower uploads:
+ * 1) GET loan → processVersionId (always present on loan)
+ * 2) GET admin-config/{processVersionId}/document-types → id for name "Uncategorized" (always present)
  */
 async function resolveUncategorizedDocumentTypeId(
   config: VestaConfig,
@@ -391,16 +392,12 @@ async function resolveUncategorizedDocumentTypeId(
   }
 
   const loan = await loanRes.json();
-  const processVersionId =
-    loan?.processVersionId ??
-    loan?.process_version_id ??
-    loan?.processVersion?.id ??
-    loan?.processVersion?.processVersionId;
+  const processVersionId = loan?.processVersionId;
 
   if (!processVersionId || typeof processVersionId !== "string") {
     return {
       error:
-        "Loan response did not include processVersionId; cannot resolve document type.",
+        "Expected loan.processVersionId from Vesta; check API version or loan payload.",
       status: 422,
     };
   }
@@ -432,17 +429,14 @@ async function resolveUncategorizedDocumentTypeId(
     if (!d || typeof d !== "object") return false;
     const o = d as Record<string, unknown>;
     const name = o.name;
-    return (
-      typeof name === "string" &&
-      name.trim().toLowerCase() === "uncategorized"
-    );
+    return typeof name === "string" && name.trim() === "Uncategorized";
   }) as Record<string, unknown> | undefined;
 
   const id = uncategorized?.id;
   if (!id || typeof id !== "string") {
     return {
       error:
-        'No document type with name "Uncategorized" found for this loan process version.',
+        'Expected document type named "Uncategorized" in admin-config document-types list.',
       status: 422,
     };
   }
