@@ -193,6 +193,8 @@ export interface Loan {
   id: string;
   borrower_id: string;
   vesta_loan_id?: string | null;
+  vesta_sync_status?: string | null;
+  submitted_at?: string | null;
   status: string;
   loan_amount?: number | null;
   loan_type?: string | null;
@@ -337,6 +339,8 @@ export interface VestaLoanPayload {
   loanPurpose?: string;
   propertyValue?: number;
   applicationData?: LoanApplicationData;
+  urlaMapped?: Record<string, unknown>;
+  mappingVersion?: string;
 }
 
 export interface Condition {

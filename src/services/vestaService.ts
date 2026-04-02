@@ -187,6 +187,61 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+export async function enqueueVestaCreateJob(
+  loanId: string,
+  payload: Record<string, unknown>,
+  mappingVersion: string
+): Promise<{ ok: boolean; duplicate?: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.from('vesta_sync_jobs').insert({
+      loan_id: loanId,
+      operation: 'create_loan',
+      idempotency_key: `create_loan:${loanId}`,
+      payload_json: payload,
+      mapping_version: mappingVersion,
+      status: 'pending',
+    });
+
+    if (error) {
+      if (error.code === '23505') {
+        return { ok: true, duplicate: true };
+      }
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || 'Failed to enqueue Vesta sync' };
+  }
+}
+
+export async function triggerVestaSyncForLoan(loanId: string): Promise<{
+  success: boolean;
+  vestaLoanId?: string | null;
+  message?: string;
+}> {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${FUNCTIONS_BASE}/vesta-sync-worker`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ loanId }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { success: false, message: data.message || `Sync failed (${response.status})` };
+    }
+    const linked = Boolean(data.vestaLoanId);
+    const workerOk = data.error !== true && (data.success !== false || linked || data.processed === 0);
+    return {
+      success: workerOk,
+      vestaLoanId: data.vestaLoanId ?? null,
+      message: data.message,
+    };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Network error' };
+  }
+}
+
 export async function uploadDocumentToVesta(
   vestaLoanId: string,
   file: File,

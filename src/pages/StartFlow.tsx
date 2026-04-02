@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
   Home, RefreshCw, Wallet, ArrowRight, ArrowLeft, ChevronDown,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import ComplianceFooter from '../components/layout/ComplianceFooter';
 import { useAuth } from '../contexts/AuthContext';
+import { persistRateFlowLead } from '../lib/rateFlowLead';
 
 type Intent = 'buy' | 'refi' | 'equity';
 type PropertyType = 'single' | 'condo' | 'townhouse' | 'multi';
@@ -38,8 +39,12 @@ function formatUSD(num: number) {
 export default function StartFlow() {
   const [params] = useSearchParams();
   const { signUp } = useAuth();
+  const resultsPersistedRef = useRef(false);
   const [step, setStep] = useState(1);
   const [showEmail, setShowEmail] = useState(false);
+  const [summaryEmail, setSummaryEmail] = useState('');
+  const [summarySendStatus, setSummarySendStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [summaryError, setSummaryError] = useState('');
   const [checkEmailAddress, setCheckEmailAddress] = useState('');
   const [data, setData] = useState<FlowData>({
     intent: (params.get('intent') as Intent) || '',
@@ -60,6 +65,17 @@ export default function StartFlow() {
       if (intent) setStep(2);
     }
   }, []);
+
+  useEffect(() => {
+    if (step < 5) resultsPersistedRef.current = false;
+  }, [step]);
+
+  useEffect(() => {
+    if (!showEmail) return;
+    setSummaryEmail('');
+    setSummarySendStatus('idle');
+    setSummaryError('');
+  }, [showEmail]);
 
   const update = (patch: Partial<FlowData>) => setData((d) => ({ ...d, ...patch }));
   const goNext = () => setStep((s) => Math.min(s + 1, 5));
@@ -95,12 +111,89 @@ export default function StartFlow() {
   const ctcLow = data.intent === 'buy' ? dp + closingLow : closingLow;
   const ctcHigh = data.intent === 'buy' ? dp + closingHigh : closingHigh;
 
-  const saveLeadData = () => {
-    localStorage.setItem('uff_lead', JSON.stringify({
+  const buildLeadPayload = () => ({
+    ...data,
+    results: {
+      lowRate,
+      highRate,
+      totalLow,
+      totalHigh,
+      ctcLow,
+      ctcHigh,
+      loan,
+      tax,
+      insurance,
+    },
+    createdAt: new Date().toISOString(),
+  });
+
+  useEffect(() => {
+    if (step !== 5) return;
+    if (resultsPersistedRef.current) return;
+    resultsPersistedRef.current = true;
+    const lead = {
       ...data,
-      results: { lowRate, highRate, totalLow, totalHigh, ctcLow, ctcHigh, loan },
+      results: {
+        lowRate,
+        highRate,
+        totalLow,
+        totalHigh,
+        ctcLow,
+        ctcHigh,
+        loan,
+        tax,
+        insurance,
+      },
       createdAt: new Date().toISOString(),
-    }));
+    };
+    void persistRateFlowLead(lead, 'results_view');
+  }, [
+    step,
+    data,
+    lowRate,
+    highRate,
+    totalLow,
+    totalHigh,
+    ctcLow,
+    ctcHigh,
+    loan,
+    tax,
+    insurance,
+  ]);
+
+  const saveLeadData = () => {
+    const lead = buildLeadPayload();
+    localStorage.setItem('uff_lead', JSON.stringify(lead));
+    void persistRateFlowLead(lead, 'save_for_signup');
+  };
+
+  const sendSummaryEmail = async () => {
+    const addr = summaryEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)) {
+      setSummaryError('Please enter a valid email address.');
+      setSummarySendStatus('error');
+      return;
+    }
+    setSummarySendStatus('sending');
+    setSummaryError('');
+    try {
+      const lead = buildLeadPayload();
+      const response = await fetch('/api/send-rate-flow-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: addr, lead }),
+      });
+      const data = (await response.json()) as { success?: boolean; message?: string };
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Could not send email. Try again or call (855) 95-EAGLE.');
+      }
+      void persistRateFlowLead({ ...lead, summarySentTo: addr }, 'summary_email');
+      setSummarySendStatus('success');
+      window.setTimeout(() => setShowEmail(false), 2200);
+    } catch (e: unknown) {
+      setSummarySendStatus('error');
+      setSummaryError(e instanceof Error ? e.message : 'Something went wrong.');
+    }
   };
 
   const handleCreateAccount = () => {
@@ -108,9 +201,37 @@ export default function StartFlow() {
     setStep(6);
   };
 
-  const handleSignupSuccess = (email: string) => {
-    setCheckEmailAddress(email);
+  const handleSignupSuccess = (signup: { email: string; firstName: string; lastName: string }) => {
+    setCheckEmailAddress(signup.email);
     setStep(7);
+    try {
+      const raw = localStorage.getItem('uff_lead');
+      const parsed = raw ? JSON.parse(raw) : {};
+      void persistRateFlowLead(
+        {
+          ...parsed,
+          flowData: data,
+          signup: {
+            email: signup.email,
+            firstName: signup.firstName,
+            lastName: signup.lastName,
+          },
+        },
+        'signup_completed'
+      );
+    } catch {
+      void persistRateFlowLead(
+        {
+          ...buildLeadPayload(),
+          signup: {
+            email: signup.email,
+            firstName: signup.firstName,
+            lastName: signup.lastName,
+          },
+        },
+        'signup_completed'
+      );
+    }
   };
 
   const handleSkipToSignup = () => {
@@ -241,13 +362,35 @@ export default function StartFlow() {
             <input
               type="email"
               placeholder="you@email.com"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              value={summaryEmail}
+              onChange={(e) => setSummaryEmail(e.target.value)}
+              disabled={summarySendStatus === 'sending' || summarySendStatus === 'success'}
+              autoComplete="email"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-50"
             />
+            {summaryError && (
+              <p className="text-sm text-red-600 mb-3">{summaryError}</p>
+            )}
+            {summarySendStatus === 'success' && (
+              <p className="text-sm text-green-700 mb-3 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                Sent. Check your inbox.
+              </p>
+            )}
             <button
-              onClick={() => setShowEmail(false)}
-              className="w-full py-3 bg-brand-600 text-white font-semibold rounded-lg hover:bg-brand-700 transition-colors"
+              type="button"
+              onClick={() => void sendSummaryEmail()}
+              disabled={summarySendStatus === 'sending' || summarySendStatus === 'success'}
+              className="w-full py-3 bg-brand-600 text-white font-semibold rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-60 disabled:pointer-events-none inline-flex items-center justify-center gap-2"
             >
-              Send summary
+              {summarySendStatus === 'sending' ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Sending…
+                </>
+              ) : (
+                'Send summary'
+              )}
             </button>
           </div>
         </div>
@@ -585,7 +728,7 @@ function WelcomeSignup({
   onSuccess,
 }: {
   signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: any }>;
-  onSuccess: (email: string) => void;
+  onSuccess: (info: { email: string; firstName: string; lastName: string }) => void;
 }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -615,7 +758,11 @@ function WelcomeSignup({
     if (signUpError) {
       setError(signUpError.message || 'Failed to create account.');
     } else {
-      onSuccess(email.trim());
+      onSuccess({
+        email: email.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      });
     }
   }
 

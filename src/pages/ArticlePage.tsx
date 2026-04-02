@@ -244,7 +244,7 @@ export default function ArticlePage() {
                   <p className="text-sm font-semibold text-gray-900 mb-1">Have questions?</p>
                   <p className="text-xs text-gray-500 mb-3">Our loan officers are here to help.</p>
                   <a
-                    href="tel:855-95-32453"
+                    href="tel:855-953-2453"
                     className="block text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors"
                   >
                     (855) 95-EAGLE

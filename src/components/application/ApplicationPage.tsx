@@ -2,7 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useApplicationForm } from '../../hooks/useApplicationForm';
 import type { SectionKey } from '../../hooks/useApplicationForm';
-import { createLoanInVesta } from '../../services/vestaService';
+import {
+  enqueueVestaCreateJob,
+  triggerVestaSyncForLoan,
+} from '../../services/vestaService';
+import { mapLoanApplicationToVesta, VESTA_MAPPING_VERSION } from '../../lib/mapLoanApplicationToVesta';
 import { supabase } from '../../lib/supabase';
 import WizardMode from './WizardMode';
 import DirectMode from './DirectMode';
@@ -74,27 +78,25 @@ function ApplicationContent({ existingLoanId }: Props) {
       const activeLoanId = result.loanId || loanId;
 
       if (activeLoanId) {
-        // Submit to Vesta
         try {
-          const vestaPayload = {
-            borrowerFirstName: formData.personalInfo?.firstName,
-            borrowerLastName: formData.personalInfo?.lastName,
-            borrowerEmail: formData.personalInfo?.email,
-            loanAmount: formData.loanDetails?.loanAmount,
-            propertyAddress: formData.property?.address,
-            loanType: formData.loanDetails?.loanType,
-            loanPurpose: formData.loanDetails?.loanPurpose,
-            propertyValue: formData.property?.propertyValue,
-            applicationData: formData,
-          };
-
-          const vestaResult = await createLoanInVesta(vestaPayload);
-
-          if (vestaResult.vestaLoanId) {
+          const vestaPayload = mapLoanApplicationToVesta(formData);
+          const enq = await enqueueVestaCreateJob(
+            activeLoanId,
+            vestaPayload,
+            VESTA_MAPPING_VERSION
+          );
+          if (!enq.ok) {
+            console.error('Vesta queue enqueue failed:', enq.error);
+          } else {
             await supabase
               .from('loans')
-              .update({ vesta_loan_id: vestaResult.vestaLoanId })
+              .update({ vesta_sync_status: 'queued', updated_at: new Date().toISOString() })
               .eq('id', activeLoanId);
+
+            const sync = await triggerVestaSyncForLoan(activeLoanId);
+            if (!sync.success && sync.message) {
+              console.warn('Vesta sync worker:', sync.message);
+            }
           }
         } catch (vestaErr) {
           console.error('Vesta error (non-blocking):', vestaErr);

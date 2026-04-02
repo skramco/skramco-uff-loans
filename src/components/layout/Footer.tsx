@@ -85,7 +85,7 @@ export default function Footer() {
             </p>
             <p className="text-white font-semibold text-sm mb-2">NMLS #34381</p>
             <div className="space-y-2 text-sm">
-              <a href="tel:855-95-32453" className="flex items-center gap-2 hover:text-white transition-colors">
+              <a href="tel:855-953-2453" className="flex items-center gap-2 hover:text-white transition-colors">
                 <Phone className="w-4 h-4 text-brand-400" />
                 (855) 95-EAGLE
               </a>

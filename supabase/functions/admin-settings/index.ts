@@ -113,6 +113,106 @@ Deno.serve(async (req: Request) => {
         return jsonResponse({ success: true, vesta_environment });
       }
 
+      case "getVestaReconciliation": {
+        const { count: submittedNoVesta } = await supabase
+          .from("loans")
+          .select("id", { count: "exact", head: true })
+          .eq("is_submitted", true)
+          .is("vesta_loan_id", null);
+
+        const { count: pendingJobs } = await supabase
+          .from("vesta_sync_jobs")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending");
+
+        const { count: failedJobs } = await supabase
+          .from("vesta_sync_jobs")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "failed");
+
+        const { count: syncedJobs } = await supabase
+          .from("vesta_sync_jobs")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "succeeded");
+
+        const { data: recentJobs, error: jobsErr } = await supabase
+          .from("vesta_sync_jobs")
+          .select(
+            "id, loan_id, status, attempt_count, last_error, created_at, vesta_loan_id, idempotency_key, mapping_version"
+          )
+          .order("created_at", { ascending: false })
+          .limit(40);
+
+        if (jobsErr) return errorResponse(jobsErr.message, 500);
+
+        return jsonResponse({
+          counts: {
+            submittedMissingVesta: submittedNoVesta ?? 0,
+            pendingJobs: pendingJobs ?? 0,
+            failedJobs: failedJobs ?? 0,
+            succeededJobs: syncedJobs ?? 0,
+          },
+          recentJobs: recentJobs || [],
+        });
+      }
+
+      case "retryVestaSyncJob": {
+        const jobId = body.jobId as string | undefined;
+        if (!jobId) return errorResponse("jobId is required");
+
+        const { error } = await supabase
+          .from("vesta_sync_jobs")
+          .update({
+            status: "pending",
+            last_error: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", jobId);
+
+        if (error) return errorResponse(error.message, 500);
+        return jsonResponse({ success: true });
+      }
+
+      case "drainVestaSyncQueue": {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+        const { data: rows, error: qErr } = await supabase
+          .from("vesta_sync_jobs")
+          .select("loan_id")
+          .eq("status", "pending")
+          .limit(80);
+
+        if (qErr) return errorResponse(qErr.message, 500);
+
+        const loanIds = [
+          ...new Set((rows || []).map((r: { loan_id: string }) => r.loan_id)),
+        ];
+        const fnUrl = `${supabaseUrl}/functions/v1/vesta-sync-worker`;
+        const results: unknown[] = [];
+
+        for (const loanId of loanIds) {
+          try {
+            const r = await fetch(fnUrl, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${serviceKey}`,
+                apikey: anonKey,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ loanId, serviceMode: true }),
+            });
+            const j = await r.json().catch(() => ({}));
+            results.push({ loanId, status: r.status, body: j });
+          } catch (e: any) {
+            results.push({ loanId, error: e?.message || "fetch failed" });
+          }
+        }
+
+        return jsonResponse({ success: true, drained: loanIds.length, results });
+      }
+
       default:
         return errorResponse(`Unknown action: ${action}`);
     }

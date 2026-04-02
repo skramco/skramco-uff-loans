@@ -68,3 +68,78 @@ export async function updateVestaEnvironment(
     return { success: false, error: 'Network error' };
   }
 }
+
+export interface VestaSyncJobRow {
+  id: string;
+  loan_id: string;
+  status: string;
+  attempt_count: number;
+  last_error: string | null;
+  created_at: string;
+  vesta_loan_id: string | null;
+  idempotency_key: string;
+  mapping_version: string;
+}
+
+export interface VestaReconciliationResponse {
+  counts: {
+    submittedMissingVesta: number;
+    pendingJobs: number;
+    failedJobs: number;
+    succeededJobs: number;
+  };
+  recentJobs: VestaSyncJobRow[];
+}
+
+export async function getVestaReconciliation(
+  password: string
+): Promise<VestaReconciliationResponse | null> {
+  try {
+    const response = await adminFetch({
+      action: 'getVestaReconciliation',
+      password,
+    });
+    if (!response.ok) return null;
+    return response.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function retryVestaSyncJob(
+  password: string,
+  jobId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await adminFetch({
+      action: 'retryVestaSyncJob',
+      password,
+      jobId,
+    });
+    const data = await response.json();
+    if (!response.ok) return { success: false, error: data.message };
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Network error' };
+  }
+}
+
+export async function drainVestaSyncQueue(
+  password: string
+): Promise<{ success: boolean; drained?: number; results?: unknown[]; error?: string }> {
+  try {
+    const response = await adminFetch({
+      action: 'drainVestaSyncQueue',
+      password,
+    });
+    const data = await response.json();
+    if (!response.ok) return { success: false, error: data.message };
+    return {
+      success: true,
+      drained: data.drained,
+      results: data.results,
+    };
+  } catch {
+    return { success: false, error: 'Network error' };
+  }
+}

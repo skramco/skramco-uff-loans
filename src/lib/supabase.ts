@@ -10,7 +10,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   // Create a dummy client that won't connect but won't crash the app
   supabase = createClient('https://placeholder.supabase.co', 'placeholder');
 } else {
-  supabase = createClient(supabaseUrl, supabaseAnonKey);
+  supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      detectSessionInUrl: true,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
 }
 
 export { supabase };

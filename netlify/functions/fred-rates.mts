@@ -112,6 +112,8 @@ export default async (req: Request, context: Context) => {
         payment: Math.round(pmt),
         change: change.toFixed(3),
         term: cfg.term,
+        sourceObservationDate: fred.date,
+        publishedAt: new Date().toISOString(),
       };
     });
 
@@ -124,6 +126,9 @@ export default async (req: Request, context: Context) => {
         creditScore: "740+",
         occupancy: "Owner-occupied single-family residence",
         lockDays: 30,
+        originationFeePct: ORIGINATION_FEE_PCT,
+        estimatedClosingCosts: ESTIMATED_FEES,
+        aprEstimatedTotalCosts: Math.round((LOAN_AMOUNT * (ORIGINATION_FEE_PCT / 100)) + ESTIMATED_FEES),
       },
       source: "Freddie Mac Primary Mortgage Market Survey via FRED",
       observationDate: m30.date,

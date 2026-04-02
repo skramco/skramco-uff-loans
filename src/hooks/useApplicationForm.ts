@@ -429,6 +429,7 @@ export function useApplicationForm(existingLoanId?: string) {
             loan_application_data: formData,
             application_progress: SECTION_ORDER.length,
             is_submitted: true,
+            submitted_at: new Date().toISOString(),
             loan_amount: loanAmount,
             loan_type: loanType,
             property_address: propertyAddress,
@@ -450,6 +451,7 @@ export function useApplicationForm(existingLoanId?: string) {
             application_progress: SECTION_ORDER.length,
             is_submitted: true,
             status: 'Submitted',
+            submitted_at: new Date().toISOString(),
           })
           .eq('id', submitLoanId);
 

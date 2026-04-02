@@ -10,6 +10,8 @@ interface RateRow {
   payment: number;
   change: string;
   term: number;
+  sourceObservationDate: string;
+  publishedAt: string;
 }
 
 interface RatePayload {
@@ -21,6 +23,9 @@ interface RatePayload {
     creditScore: string;
     occupancy: string;
     lockDays: number;
+    originationFeePct: number;
+    estimatedClosingCosts: number;
+    aprEstimatedTotalCosts: number;
   };
   source: string;
   observationDate: string;
@@ -29,6 +34,21 @@ interface RatePayload {
 
 const fmtCurrency = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+const fmtDateTime = (iso?: string) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZoneName: 'short',
+  });
+};
 
 export default function RatesPage() {
   const [data, setData] = useState<RatePayload | null>(null);
@@ -55,6 +75,7 @@ export default function RatesPage() {
   const observationLabel = data?.observationDate
     ? new Date(data.observationDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : null;
+  const lastPublishedLabel = observationLabel;
 
   return (
     <div className="pt-20">
@@ -147,6 +168,9 @@ export default function RatesPage() {
                   </table>
                 </div>
               </div>
+              <p className="text-[11px] text-gray-400 mb-8 px-1">
+                Last published: {lastPublishedLabel || 'Unavailable'}
+              </p>
 
               {/* Source badge */}
               <div className="flex items-center justify-center gap-2 text-xs text-gray-400 mb-8">
@@ -162,7 +186,9 @@ export default function RatesPage() {
                   <p>
                     Rates shown assume: {fmtCurrency(data.assumptions.loanAmount)} loan amount, {fmtCurrency(data.assumptions.homePrice)} home price, {data.assumptions.downPaymentPct}% down payment,
                     {' '}{data.assumptions.creditScore} credit score, {data.assumptions.occupancy.toLowerCase()}, {data.assumptions.lockDays}-day rate lock.
-                    Your actual rate may differ. APR includes estimated closing costs and fees.
+                    {' '}APR assumes {data.assumptions.originationFeePct}% origination plus estimated third-party closing costs of {fmtCurrency(data.assumptions.estimatedClosingCosts)}
+                    {' '}({fmtCurrency(data.assumptions.aprEstimatedTotalCosts)} total estimated APR costs).
+                    {' '}Your actual rate may differ.
                     Rates are derived from the Freddie Mac Primary Mortgage Market Survey (PMMS) published weekly and may not reflect intraday market movements.
                   </p>
                 </div>

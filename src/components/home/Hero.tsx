@@ -230,7 +230,7 @@ export default function Hero() {
                 {isSubmitting ? 'Submitting...' : 'Request a callback'}
               </button>
               <p className="text-xs text-gray-500 text-center">
-                Or call us now at <a href="tel:855-95-32453" className="text-brand-600 font-medium">(855) 95-EAGLE</a>
+                Or call us now at <a href="tel:855-953-2453" className="text-brand-600 font-medium">(855) 95-EAGLE</a>
               </p>
             </div>
           </div>

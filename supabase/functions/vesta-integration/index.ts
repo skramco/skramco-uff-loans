@@ -74,6 +74,15 @@ function errorResponse(message: string, status = 400) {
   return jsonResponse({ error: true, message }, status);
 }
 
+/** apiUrl is typically .../api/v1 — loan collection is /loans not /api/loans */
+function vestaLoansCollectionUrl(apiUrl: string): string {
+  return `${apiUrl.replace(/\/+$/, "")}/loans`;
+}
+
+function vestaLoanItemUrl(apiUrl: string, vestaLoanId: string): string {
+  return `${apiUrl.replace(/\/+$/, "")}/loans/${encodeURIComponent(vestaLoanId)}`;
+}
+
 async function handleCreateLoan(config: VestaConfig, payload: any) {
   if (!config.apiUrl || !config.apiKey) {
     return jsonResponse({
@@ -84,7 +93,7 @@ async function handleCreateLoan(config: VestaConfig, payload: any) {
   }
 
   try {
-    const response = await fetch(`${config.apiUrl}/api/loans`, {
+    const response = await fetch(vestaLoansCollectionUrl(config.apiUrl), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -101,6 +110,8 @@ async function handleCreateLoan(config: VestaConfig, payload: any) {
         loanPurpose: payload.loanPurpose,
         propertyValue: payload.propertyValue,
         applicationData: payload.applicationData,
+        urlaMapped: payload.urlaMapped,
+        mappingVersion: payload.mappingVersion,
       }),
     });
 
@@ -137,7 +148,7 @@ async function handleUpdateLoan(
 
   try {
     const response = await fetch(
-      `${config.apiUrl}/api/loans/${vestaLoanId}`,
+      vestaLoanItemUrl(config.apiUrl, vestaLoanId),
       {
         method: "PUT",
         headers: {

@@ -26,7 +26,7 @@ export default function Footer() {
               <p>1300 NW Briarcliff Pkwy #275</p>
               <p>Kansas City, MO 64116</p>
               <p className="mt-2">
-                <a href="tel:855-95-32453" className="hover:text-white transition-colors">
+                <a href="tel:855-953-2453" className="hover:text-white transition-colors">
                   (855) 95-EAGLE
                 </a>
               </p>

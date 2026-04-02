@@ -6,6 +6,11 @@
   directory = "netlify/functions"
 
 [[redirects]]
+  from = "/api/send-rate-flow-summary"
+  to = "/.netlify/functions/send-rate-flow-summary"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

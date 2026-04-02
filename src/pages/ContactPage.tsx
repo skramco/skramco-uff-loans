@@ -19,7 +19,7 @@ export default function ContactPage() {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Contact info</h2>
                 <div className="space-y-5">
-                  <a href="tel:855-95-32453" className="flex items-start gap-4 group">
+                  <a href="tel:855-953-2453" className="flex items-start gap-4 group">
                     <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-brand-100 transition-colors">
                       <Phone className="w-5 h-5 text-brand-600" />
                     </div>

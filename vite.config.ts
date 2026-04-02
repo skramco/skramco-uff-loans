@@ -1,5 +1,9 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import {
+  processRateFlowSummary,
+  CORS_HEADERS as rateFlowSummaryCors,
+} from './netlify/_shared/sendRateFlowSummaryResend';
 
 // Shared FRED fetch helper for local dev proxies
 async function fetchFred(seriesId: string, apiKey: string, limit = 2) {
@@ -27,6 +31,48 @@ export default defineConfig(({ mode }) => {
       {
         name: 'fred-dev-proxy',
         configureServer(server) {
+          // ─── /api/send-rate-flow-summary (Resend; needs RESEND_API_KEY in .env) ───
+          server.middlewares.use('/api/send-rate-flow-summary', async (req, res) => {
+            const json = (status: number, payload: Record<string, unknown>) => {
+              res.writeHead(status, { 'Content-Type': 'application/json', ...rateFlowSummaryCors });
+              res.end(JSON.stringify(payload));
+            };
+            if (req.method === 'OPTIONS') {
+              res.writeHead(204, rateFlowSummaryCors);
+              res.end();
+              return;
+            }
+            if (req.method !== 'POST') {
+              json(405, { success: false, message: 'Method not allowed' });
+              return;
+            }
+            try {
+              const chunks: Buffer[] = [];
+              for await (const chunk of req) chunks.push(chunk as Buffer);
+              const rawStr = Buffer.concat(chunks).toString('utf8');
+              let parsed: unknown;
+              try {
+                parsed = JSON.parse(rawStr);
+              } catch {
+                json(400, { success: false, message: 'Invalid JSON' });
+                return;
+              }
+              const result = await processRateFlowSummary(parsed, {
+                RESEND_API_KEY: env.RESEND_API_KEY,
+                RESEND_FROM_EMAIL: env.RESEND_FROM_EMAIL,
+                RATE_FLOW_SUMMARY_TO: env.RATE_FLOW_SUMMARY_TO,
+              });
+              if (!result.success) {
+                json(result.status, { success: false, message: result.message });
+                return;
+              }
+              json(200, { success: true });
+            } catch (err: unknown) {
+              const message = err instanceof Error ? err.message : 'Internal error';
+              json(500, { success: false, message });
+            }
+          });
+
           // ─── /api/rates ───
           server.middlewares.use('/api/rates', async (_req, res) => {
             try {
@@ -103,6 +149,11 @@ export default defineConfig(({ mode }) => {
     ],
     optimizeDeps: {
       exclude: ['lucide-react'],
+    },
+    // Match Supabase Auth "Site URL" when set to http://localhost:3000 so email confirm links work.
+    server: {
+      port: 3000,
+      strictPort: false,
     },
   };
 });

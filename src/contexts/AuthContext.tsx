@@ -71,6 +71,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signUp(email: string, password: string, firstName: string, lastName: string) {
+    const hasLead = typeof window !== 'undefined' && !!localStorage.getItem('uff_lead');
+    const nextPath = hasLead ? '/apply' : '/my-loan';
+    const callback = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -79,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           first_name: firstName,
           last_name: lastName,
         },
-        emailRedirectTo: `${window.location.origin}/apply`,
+        emailRedirectTo: callback,
       },
     });
 

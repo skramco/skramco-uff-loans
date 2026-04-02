@@ -22,6 +22,7 @@ import ApplicationPage from './components/application/ApplicationPage';
 import MyLoanPage from './pages/MyLoanPage';
 import AdminPage from './components/admin/AdminPage';
 import MarketPulsePage from './pages/MarketPulsePage';
+import AuthCallbackPage from './pages/AuthCallbackPage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -46,6 +47,7 @@ export default function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/start" element={<StartFlow />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/apply" element={<ApplicationPage />} />
