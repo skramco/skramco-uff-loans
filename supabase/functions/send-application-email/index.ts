@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const companyEmail = Deno.env.get("COMPANY_EMAIL") || "loans@uff.loans";
+    const companyEmail = Deno.env.get("COMPANY_EMAIL") || "mark.ramirez@uff.loans";
     const companyName = "United Fidelity Funding";
     const fromAddress = `${companyName} <noreply@uff.loans>`;
     const notifFromAddress = `${companyName} <notifications@uff.loans>`;
@@ -412,7 +412,7 @@ Deno.serve(async (req: Request) => {
                         </td>
                         <td style="padding: 0 8px; color: #fecaca;">|</td>
                         <td style="padding: 0 8px;">
-                          <a href="mailto:loans@uff.loans" style="font-family: Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: 700;">&#128231; loans@uff.loans</a>
+                          <a href="mailto:${companyEmail}" style="font-family: Arial, sans-serif; font-size: 15px; color: #ffffff; text-decoration: none; font-weight: 700;">&#128231; ${companyEmail}</a>
                         </td>
                       </tr>
                     </table>

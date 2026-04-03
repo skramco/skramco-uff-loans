@@ -525,11 +525,11 @@ function OverviewContent({ hasVesta, vestaLoan, pi, ld, pr, emp, sbConditions, o
                 </div>
                 (855) 89-EAGLE
               </a>
-              <a href="mailto:loans@uff.loans" className="flex items-center gap-3 text-sm text-gray-700 hover:text-red-600 transition-colors group">
+              <a href="mailto:mark.ramirez@uff.loans" className="flex items-center gap-3 text-sm text-gray-700 hover:text-red-600 transition-colors group">
                 <div className="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-red-50 flex items-center justify-center transition-colors">
                   <Mail className="w-4 h-4 text-gray-500 group-hover:text-red-600" />
                 </div>
-                loans@uff.loans
+                mark.ramirez@uff.loans
               </a>
             </div>
             <div className="flex items-start gap-2 mt-4 pt-3 border-t border-gray-100">
