@@ -1,0 +1,10 @@
+# Gateway JWT verification uses legacy HS256 expectations; user access tokens
+# signed with ES256 (ECC P-256) fail with 401 "Invalid JWT" before the
+# function runs. We verify the session inside the function instead.
+# See: https://github.com/supabase/supabase/issues/42810
+
+[functions.vesta-sync-worker]
+verify_jwt = false
+
+[functions.vesta-integration]
+verify_jwt = false
