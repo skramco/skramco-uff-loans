@@ -5,6 +5,8 @@ interface CashToCloseProps {
 }
 
 export default function CashToClose({ loan }: CashToCloseProps) {
+  const purpose = String(loan.loanPurpose || '').toLowerCase();
+  const isRefinance = purpose.includes('refinance');
   const downPayment = loan.downPaymentAmount;
   const earnestMoney = loan.earnestMoneyDepositAmount;
   const closingCosts = loan.totalClosingCostsAmountEstimate;
@@ -15,14 +17,16 @@ export default function CashToClose({ loan }: CashToCloseProps) {
   const cashToClose = loan.requiredCashToCloseEstimate;
   const cashToCloseWithEarnest = loan.requiredCashToClosePlusUnsourcedEarnestMoneyEstimate;
 
-  const hasData = downPayment != null || cashToClose != null;
+  const hasData = (!isRefinance && downPayment != null) || cashToClose != null;
   if (!hasData) return null;
 
   const lines: { label: string; amount: number | null; isCredit?: boolean; isBold?: boolean }[] = [
-    { label: 'Down Payment', amount: downPayment },
     { label: 'Initial Escrow Payment', amount: escrowEstimate },
     { label: 'Estimated Closing Costs', amount: closingCosts },
   ];
+  if (!isRefinance) {
+    lines.unshift({ label: 'Down Payment', amount: downPayment });
+  }
 
   if (lenderCredits) {
     lines.push({ label: 'Lender Credits', amount: -Math.abs(lenderCredits), isCredit: true });

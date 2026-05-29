@@ -1,16 +1,8 @@
 import { useState } from 'react';
 import {
-  FileText,
   ChevronDown,
   ChevronRight,
   Clock,
-  Briefcase,
-  Home,
-  DollarSign,
-  TrendingUp,
-  CreditCard,
-  Building,
-  FileCheck,
   HelpCircle,
   X,
   Send,
@@ -18,23 +10,19 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { sendConditionQuestion } from '../../services/vestaService';
-
-interface ConditionItem {
-  id: string;
-  entityType: string;
-  conditionTiming: string | null;
-  conditionStatus: string;
-  conditionAtFaultUsers: string[];
-  instructionsOverride: string;
-  conditionCategory?: string;
-  objectiveName?: string;
-  [key: string]: any;
-}
+import {
+  getConditionDisplayText,
+  getConditionTitle,
+  type VestaObjectiveCondition,
+} from '../../lib/vestaConditions';
+import ConditionCard from './ConditionCard';
 
 interface ConditionListProps {
-  conditions: ConditionItem[];
+  conditions: VestaObjectiveCondition[];
   statusBadge: React.ReactNode;
-  loan?: any;
+  loan?: Record<string, unknown>;
+  allowActions?: boolean;
+  onConditionsUpdated?: () => void;
 }
 
 const TIMING_ORDER = [
@@ -53,18 +41,6 @@ const TIMING_LABELS: Record<string, string> = {
   PostFunding: 'Post Funding',
 };
 
-const ENTITY_ICONS: Record<string, any> = {
-  Loan: FileText,
-  Borrower: Briefcase,
-  Property: Home,
-  Asset: DollarSign,
-  Income: TrendingUp,
-  Liability: CreditCard,
-  ClosingCost: DollarSign,
-  Document: FileCheck,
-  BorrowerBusiness: Building,
-};
-
 const TIMING_COLORS: Record<string, { badge: string }> = {
   PriorToApproval: { badge: 'bg-amber-100 text-amber-800' },
   PriorToDocs: { badge: 'bg-red-100 text-red-800' },
@@ -73,12 +49,8 @@ const TIMING_COLORS: Record<string, { badge: string }> = {
   PostFunding: { badge: 'bg-gray-100 text-gray-800' },
 };
 
-function entityLabel(type: string): string {
-  return type.replace(/([A-Z])/g, ' $1').trim();
-}
-
-function groupByTiming(conditions: ConditionItem[]) {
-  const groups: Record<string, ConditionItem[]> = {};
+function groupByTiming(conditions: VestaObjectiveCondition[]) {
+  const groups: Record<string, VestaObjectiveCondition[]> = {};
   conditions.forEach((c) => {
     const key = c.conditionTiming || 'Other';
     if (!groups[key]) groups[key] = [];
@@ -98,11 +70,17 @@ function groupByTiming(conditions: ConditionItem[]) {
     }));
 }
 
-export default function ConditionList({ conditions, statusBadge, loan }: ConditionListProps) {
+export default function ConditionList({
+  conditions,
+  statusBadge,
+  loan,
+  allowActions = false,
+  onConditionsUpdated,
+}: ConditionListProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     () => new Set(groupByTiming(conditions).map((g) => g.key))
   );
-  const [questionModal, setQuestionModal] = useState<ConditionItem | null>(null);
+  const [questionModal, setQuestionModal] = useState<VestaObjectiveCondition | null>(null);
   const [questionText, setQuestionText] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -117,7 +95,7 @@ export default function ConditionList({ conditions, statusBadge, loan }: Conditi
     });
   }
 
-  function openQuestionModal(condition: ConditionItem) {
+  function openQuestionModal(condition: VestaObjectiveCondition) {
     setQuestionModal(condition);
     setQuestionText('');
     setSending(false);
@@ -138,18 +116,27 @@ export default function ConditionList({ conditions, statusBadge, loan }: Conditi
     setSending(true);
     setSendError('');
 
-    const borrowerEmail = loan.borrowers?.[0]?.emailAddress || '';
-    const borrowerName = loan.borrowers?.[0]?.fullName ||
-      [loan.borrowers?.[0]?.firstName, loan.borrowers?.[0]?.lastName].filter(Boolean).join(' ') || 'Borrower';
-    const loName = loan.loanOriginator?.fullName || '';
-    const loEmail = loan.loanOriginator?.emailAddress || loan.loanOriginator?.email || '';
-    const loanNumber = loan.loanNumber || loan.referenceNumber || '';
+    const borrowers = loan.borrowers as Array<Record<string, unknown>> | undefined;
+    const loanOriginator = loan.loanOriginator as Record<string, unknown> | undefined;
+    const subjectProperty = loan.subjectProperty as Record<string, unknown> | undefined;
+    const address = subjectProperty?.address as Record<string, unknown> | undefined;
+
+    const borrowerEmail = String(borrowers?.[0]?.emailAddress || '');
+    const borrowerName =
+      String(borrowers?.[0]?.fullName || '') ||
+      [borrowers?.[0]?.firstName, borrowers?.[0]?.lastName].filter(Boolean).join(' ') ||
+      'Borrower';
+    const loName = String(loanOriginator?.fullName || '');
+    const loEmail = String(loanOriginator?.emailAddress || loanOriginator?.email || '');
+    const loanNumber = String(loan.loanNumber || loan.referenceNumber || '');
     const propertyAddress = [
-      loan.subjectProperty?.address?.streetAddress,
-      loan.subjectProperty?.address?.city,
-      loan.subjectProperty?.address?.state,
-      loan.subjectProperty?.address?.zipCode,
-    ].filter(Boolean).join(', ');
+      address?.line || address?.streetAddress,
+      address?.city,
+      address?.state,
+      address?.zipCode,
+    ]
+      .filter(Boolean)
+      .join(', ');
 
     const result = await sendConditionQuestion({
       borrowerName,
@@ -158,9 +145,12 @@ export default function ConditionList({ conditions, statusBadge, loan }: Conditi
       loanOfficerEmail: loEmail,
       loanNumber,
       propertyAddress,
-      conditionName: questionModal.objectiveName || questionModal.instructionsOverride || 'Condition',
-      conditionInstructions: questionModal.instructionsOverride || questionModal.externalFacingMessage || '',
-      conditionTiming: TIMING_LABELS[questionModal.conditionTiming || ''] || questionModal.conditionTiming || '',
+      conditionName: getConditionTitle(questionModal),
+      conditionInstructions: getConditionDisplayText(questionModal),
+      conditionTiming:
+        TIMING_LABELS[questionModal.conditionTiming || ''] ||
+        questionModal.conditionTiming ||
+        '',
       conditionStatus: questionModal.conditionStatus || '',
       question: questionText.trim(),
     });
@@ -184,11 +174,9 @@ export default function ConditionList({ conditions, statusBadge, loan }: Conditi
         const timingColor = TIMING_COLORS[group.key] || TIMING_COLORS.PostFunding;
 
         return (
-          <div
-            key={group.key}
-            className="rounded-xl border border-gray-200 overflow-hidden"
-          >
+          <div key={group.key} className="rounded-xl border border-gray-200 overflow-hidden">
             <button
+              type="button"
               onClick={() => toggleGroup(group.key)}
               className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100/80 transition-colors"
             >
@@ -199,55 +187,27 @@ export default function ConditionList({ conditions, statusBadge, loan }: Conditi
                   <ChevronRight className="w-4 h-4 text-gray-400" />
                 )}
                 <span className="font-medium text-sm text-gray-900">{group.label}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${timingColor.badge}`}>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-xs font-semibold ${timingColor.badge}`}
+                >
                   {group.items.length}
                 </span>
               </div>
             </button>
 
             {isExpanded && (
-              <div className="border-t border-gray-100 divide-y divide-gray-50">
-                {group.items.map((condition, idx) => {
-                  const EntityIcon = ENTITY_ICONS[condition.entityType] || FileText;
-                  return (
-                    <div
-                      key={condition.id || idx}
-                      className="px-4 py-3.5 bg-white hover:bg-gray-50/50 transition-colors"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <EntityIcon className="w-3.5 h-3.5 text-gray-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-900 leading-relaxed">
-                            {condition.instructionsOverride || condition.externalFacingMessage || 'No instructions provided.'}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2 mt-2">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                              {entityLabel(condition.entityType)}
-                            </span>
-                            {condition.conditionTiming && (
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${timingColor.badge}`}>
-                                <Clock className="w-3 h-3" />
-                                {TIMING_LABELS[condition.conditionTiming] || condition.conditionTiming}
-                              </span>
-                            )}
-                            {statusBadge}
-                            {loan && (
-                              <button
-                                onClick={() => openQuestionModal(condition)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors ml-auto"
-                              >
-                                <HelpCircle className="w-3 h-3" />
-                                Have a question?
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="border-t border-gray-100">
+                {group.items.map((condition) => (
+                  <ConditionCard
+                    key={condition.id}
+                    condition={condition}
+                    loan={loan || {}}
+                    statusBadge={statusBadge}
+                    allowActions={allowActions}
+                    onUpdated={onConditionsUpdated}
+                    onAskQuestion={loan ? openQuestionModal : undefined}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -260,11 +220,12 @@ export default function ConditionList({ conditions, statusBadge, loan }: Conditi
             <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <HelpCircle className="w-5 h-5 text-white/80" />
-                <h3 className="text-base font-semibold text-white">Ask Your Loan Officer</h3>
+                <h3 className="text-base font-semibold text-white">Email Your Loan Officer</h3>
               </div>
               <button
+                type="button"
                 onClick={closeQuestionModal}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white/70 hover:text-white hover:bg-white/15 transition-colors"
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-white/70 hover:text-white hover:bg-white/15"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -272,73 +233,43 @@ export default function ConditionList({ conditions, statusBadge, loan }: Conditi
 
             {sent ? (
               <div className="p-8 text-center">
-                <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-7 h-7 text-green-500" />
-                </div>
+                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
                 <h4 className="text-lg font-semibold text-gray-900 mb-1">Question Sent</h4>
                 <p className="text-sm text-gray-500">
-                  Your loan officer will receive your question and reply directly to your email.
+                  Your loan officer will receive your email shortly.
                 </p>
               </div>
             ) : (
               <div className="p-6 space-y-4">
-                <div className="bg-gray-50 rounded-xl p-3.5">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Regarding Condition</p>
-                  <p className="text-sm text-gray-900 leading-relaxed">
-                    {questionModal.instructionsOverride || questionModal.externalFacingMessage || 'No instructions provided.'}
-                  </p>
-                  {questionModal.conditionTiming && (
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs mt-2 ${
-                      TIMING_COLORS[questionModal.conditionTiming]?.badge || 'bg-gray-100 text-gray-600'
-                    }`}>
-                      <Clock className="w-3 h-3" />
-                      {TIMING_LABELS[questionModal.conditionTiming] || questionModal.conditionTiming}
-                    </span>
-                  )}
+                <div className="bg-gray-50 rounded-xl p-3.5 text-sm text-gray-800">
+                  {getConditionDisplayText(questionModal)}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Your Question
-                  </label>
-                  <textarea
-                    value={questionText}
-                    onChange={(e) => setQuestionText(e.target.value)}
-                    placeholder="Type your question about this condition..."
-                    rows={4}
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none transition-shadow"
-                  />
-                </div>
-
+                <textarea
+                  value={questionText}
+                  onChange={(e) => setQuestionText(e.target.value)}
+                  placeholder="Your question..."
+                  rows={4}
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm resize-none"
+                />
                 {sendError && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                    {sendError}
-                  </div>
+                  <p className="text-sm text-red-700 bg-red-50 rounded-lg p-2">{sendError}</p>
                 )}
-
-                <div className="flex gap-3 pt-1">
+                <div className="flex gap-3">
                   <button
+                    type="button"
                     onClick={closeQuestionModal}
-                    className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
+                    className="flex-1 py-2.5 bg-gray-100 rounded-xl text-sm font-medium"
                   >
                     Cancel
                   </button>
                   <button
+                    type="button"
                     onClick={handleSendQuestion}
                     disabled={!questionText.trim() || sending}
-                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    {sending ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4" />
-                        Send Question
-                      </>
-                    )}
+                    {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Send
                   </button>
                 </div>
               </div>

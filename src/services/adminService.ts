@@ -124,6 +124,142 @@ export async function retryVestaSyncJob(
   }
 }
 
+export async function backfillVestaJobs(
+  password: string,
+  limit = 50
+): Promise<{ success: boolean; backfilled?: number; error?: string }> {
+  try {
+    const response = await adminFetch({
+      action: 'backfillVestaJobs',
+      password,
+      limit,
+    });
+    const data = await response.json();
+    if (!response.ok) return { success: false, error: data.message };
+    return { success: true, backfilled: data.backfilled };
+  } catch {
+    return { success: false, error: 'Network error' };
+  }
+}
+
+export async function runVestaSyncCron(
+  password: string
+): Promise<{ success: boolean; error?: string; drained?: number; backfilled?: number }> {
+  try {
+    const response = await adminFetch({
+      action: 'runVestaSyncCron',
+      password,
+    });
+    const data = await response.json();
+    if (!response.ok) return { success: false, error: data.message };
+    return {
+      success: true,
+      drained: data.drained,
+      backfilled: data.backfilled,
+    };
+  } catch {
+    return { success: false, error: 'Network error' };
+  }
+}
+
+export interface VestaPushLoanRow {
+  id: string;
+  tempLoanNumber: string | null;
+  vestaLoanId: string | null;
+  vestaSyncStatus: string | null;
+  submittedAt: string | null;
+  loanAmount: number | null;
+  loanType: string | null;
+  loanPurpose: string | null;
+  propertyAddress: string | null;
+  borrowerName: string | null;
+  borrowerEmail: string | null;
+  jobStatus: string | null;
+  jobLastError: string | null;
+  jobAttemptCount: number;
+}
+
+export type VestaPushLoanFilter = 'all' | 'needs_sync' | 'synced';
+
+export async function listVestaPushLoans(
+  password: string,
+  filter: VestaPushLoanFilter = 'needs_sync'
+): Promise<{ success: boolean; loans?: VestaPushLoanRow[]; error?: string }> {
+  try {
+    const response = await adminFetch({
+      action: 'listVestaPushLoans',
+      password,
+      filter,
+    });
+    const data = await response.json();
+    if (!response.ok) return { success: false, error: data.message };
+    return { success: true, loans: data.loans || [] };
+  } catch {
+    return { success: false, error: 'Network error' };
+  }
+}
+
+export async function deleteLoanApplication(
+  password: string,
+  loanId: string
+): Promise<{
+  success: boolean;
+  hadVestaLoanId?: boolean;
+  error?: string;
+  message?: string;
+}> {
+  try {
+    const response = await adminFetch({
+      action: 'deleteLoanApplication',
+      password,
+      loanId,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, error: data.message || 'Delete failed' };
+    }
+    return {
+      success: true,
+      hadVestaLoanId: data.hadVestaLoanId,
+      message: data.message,
+    };
+  } catch {
+    return { success: false, error: 'Network error' };
+  }
+}
+
+export async function pushLoanToVesta(
+  password: string,
+  loanId: string
+): Promise<{
+  success: boolean;
+  vestaLoanId?: string | null;
+  alreadySynced?: boolean;
+  error?: string;
+  workerMessage?: string;
+}> {
+  try {
+    const response = await adminFetch({
+      action: 'pushLoanToVesta',
+      password,
+      loanId,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, error: data.message || 'Push failed' };
+    }
+    return {
+      success: data.success !== false,
+      vestaLoanId: data.vestaLoanId,
+      alreadySynced: data.alreadySynced,
+      workerMessage: data.worker?.message,
+      error: data.success === false ? data.worker?.message : undefined,
+    };
+  } catch {
+    return { success: false, error: 'Network error' };
+  }
+}
+
 export async function drainVestaSyncQueue(
   password: string
 ): Promise<{ success: boolean; drained?: number; results?: unknown[]; error?: string }> {

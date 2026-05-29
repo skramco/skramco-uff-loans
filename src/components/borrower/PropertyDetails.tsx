@@ -8,6 +8,7 @@ interface PropertyDetailsProps {
 export default function PropertyDetails({ loan }: PropertyDetailsProps) {
   const property = loan.subjectProperty;
   if (!property) return null;
+  const displayValue = property.estimatedValueAmount ?? property.actualValueAmount;
 
   const address = property.address;
   const fullAddress = address
@@ -55,11 +56,11 @@ export default function PropertyDetails({ loan }: PropertyDetailsProps) {
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        {property.actualValueAmount && (
+        {displayValue && (
           <InfoCard
             icon={<Home className="w-4 h-4" />}
-            label="Appraised Value"
-            value={formatCurrency(property.actualValueAmount)}
+            label="Estimated Value"
+            value={formatCurrency(displayValue)}
           />
         )}
         {propertyType && (

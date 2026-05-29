@@ -59,7 +59,10 @@ function extractLetterData(loan: any) {
     coBorrowerName,
     loanNumber: loan.loanNumber,
     loanAmount: loan.loanAmount,
-    purchasePrice: loan.salesContractPurchasePrice || property?.actualValueAmount,
+    purchasePrice:
+      loan.salesContractPurchasePrice ||
+      property?.estimatedValueAmount ||
+      property?.actualValueAmount,
     downPayment: loan.downPaymentAmount,
     downPaymentPct: loan.downPaymentPercentage,
     ltv: loan.loanToValueRatio,

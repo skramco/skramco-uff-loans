@@ -19,6 +19,8 @@ import {
   getVestaReconciliation,
   retryVestaSyncJob,
   drainVestaSyncQueue,
+  backfillVestaJobs,
+  runVestaSyncCron,
   type AdminSettingsResponse,
   type VestaReconciliationResponse,
   type VestaSyncJobRow,
@@ -42,6 +44,8 @@ export default function AdminDashboard({ password, onLogout }: Props) {
   const [recError, setRecError] = useState('');
   const [recLoading, setRecLoading] = useState(false);
   const [draining, setDraining] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
+  const [runningCron, setRunningCron] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
   const loadSyncOnly = useCallback(async () => {
@@ -277,6 +281,50 @@ export default function AdminDashboard({ password, onLogout }: Props) {
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : null}
                   Drain pending queue
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setBackfilling(true);
+                    setError('');
+                    const r = await backfillVestaJobs(password);
+                    setBackfilling(false);
+                    if (r.success) {
+                      setSuccessMsg(`Backfilled ${r.backfilled ?? 0} loan(s). Run drain to process.`);
+                      await loadSyncOnly();
+                    } else {
+                      setError(r.error || 'Backfill failed');
+                    }
+                    setTimeout(() => setSuccessMsg(''), 6000);
+                  }}
+                  disabled={backfilling}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700/80 disabled:opacity-50"
+                >
+                  {backfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Backfill
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setRunningCron(true);
+                    setError('');
+                    const r = await runVestaSyncCron(password);
+                    setRunningCron(false);
+                    if (r.success) {
+                      setSuccessMsg(
+                        `Cron: backfilled ${r.backfilled ?? 0}, drained ${r.drained ?? 0} loan(s).`
+                      );
+                      await loadSyncOnly();
+                    } else {
+                      setError(r.error || 'Cron run failed');
+                    }
+                    setTimeout(() => setSuccessMsg(''), 6000);
+                  }}
+                  disabled={runningCron}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-emerald-700 text-white hover:bg-emerald-600 disabled:opacity-50"
+                >
+                  {runningCron ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Run full sync
                 </button>
               </div>
             </div>

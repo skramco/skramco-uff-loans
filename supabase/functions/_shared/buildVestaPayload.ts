@@ -1,22 +1,24 @@
-import type { LoanApplicationData } from '../types';
-
-/** Version bumped when mapper output shape changes (stored on sync jobs). */
-export const VESTA_MAPPING_VERSION = '1';
-
 /**
- * Canonical mapping from URLA-style wizard data to a Vesta-friendly payload.
- * Top-level fields mirror existing createLoan contract; `urlaMapped` holds structured sections.
+ * Build vesta_sync_jobs payload from loan_application_data.
+ * Keep in sync with src/lib/mapLoanApplicationToVesta.ts
  */
-export function mapLoanApplicationToVesta(data: LoanApplicationData): Record<string, unknown> {
-  const p = data.personalInfo || {};
-  const e = data.employment || {};
-  const a = data.assets || {};
-  const l = data.liabilities || {};
-  const pr = data.property || {};
-  const ld = data.loanDetails || {};
-  const d = data.declarations || {};
 
-  const propertyAddress = [pr.address, pr.city, pr.state, pr.zip].filter(Boolean).join(', ') || undefined;
+export const VESTA_MAPPING_VERSION = "1";
+
+export function buildVestaPayloadFromApplication(
+  data: Record<string, unknown>
+): Record<string, unknown> {
+  const p = (data.personalInfo || {}) as Record<string, unknown>;
+  const e = (data.employment || {}) as Record<string, unknown>;
+  const a = (data.assets || {}) as Record<string, unknown>;
+  const l = (data.liabilities || {}) as Record<string, unknown>;
+  const pr = (data.property || {}) as Record<string, unknown>;
+  const ld = (data.loanDetails || {}) as Record<string, unknown>;
+  const d = (data.declarations || {}) as Record<string, unknown>;
+
+  const propertyAddress = [pr.address, pr.city, pr.state, pr.zip]
+    .filter(Boolean)
+    .join(", ") || undefined;
 
   const urlaMapped = {
     personalInfo: {

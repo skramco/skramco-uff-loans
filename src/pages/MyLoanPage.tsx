@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useBorrowerSession } from '../contexts/BorrowerSessionContext';
 import { supabase } from '../lib/supabase';
 import ComplianceFooter from '../components/layout/ComplianceFooter';
+import { fetchVestaLoanById } from '../services/vestaService';
 
 // Existing Vesta-powered dashboard components
 import LoanOverview from '../components/borrower/LoanOverview';
@@ -48,12 +49,24 @@ import {
 interface SupabaseLoan {
   id: string;
   temp_loan_number: string | null;
+  vesta_loan_number: string | null;
   status: string;
   is_submitted: boolean;
   loan_application_data: any;
   created_at: string;
   updated_at: string;
   vesta_loan_id: string | null;
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+function supabaseDisplayLoanNumber(loan: SupabaseLoan | null): string | null {
+  if (!loan) return null;
+  if (loan.vesta_loan_number) return loan.vesta_loan_number;
+  if (loan.vesta_loan_id && !isUuid(loan.vesta_loan_id)) return loan.vesta_loan_id;
+  return loan.temp_loan_number;
 }
 
 interface ConditionRow {
@@ -109,10 +122,11 @@ export default function MyLoanPage() {
 
   const [sbLoan, setSbLoan] = useState<SupabaseLoan | null>(null);
   const [sbConditions, setSbConditions] = useState<ConditionRow[]>([]);
+  const [vestaLoanFetched, setVestaLoanFetched] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
-  const vestaLoan = vestaSession?.loan || null;
+  const vestaLoan = (vestaSession?.loan || vestaLoanFetched) as Record<string, unknown> | null;
   const hasVesta = !!vestaLoan;
 
   useEffect(() => {
@@ -122,6 +136,30 @@ export default function MyLoanPage() {
     }
     loadSupabaseLoan();
   }, [user, vestaSession]);
+
+  useEffect(() => {
+    if (vestaSession?.loan || !sbLoan?.vesta_loan_id) return;
+    if (sbLoan.vesta_loan_number) return;
+    if (!isUuid(sbLoan.vesta_loan_id)) return;
+
+    let cancelled = false;
+    (async () => {
+      const loan = await fetchVestaLoanById(sbLoan.vesta_loan_id!);
+      if (!cancelled && loan) {
+        setVestaLoanFetched(loan);
+        const loanNumber =
+          loan.loanNumber != null ? String(loan.loanNumber) : null;
+        if (loanNumber) {
+          setSbLoan((prev) =>
+            prev ? { ...prev, vesta_loan_number: loanNumber } : prev
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sbLoan?.id, sbLoan?.vesta_loan_id, sbLoan?.vesta_loan_number, vestaSession?.loan]);
 
   async function loadSupabaseLoan() {
     if (!user) { setLoading(false); return; }
@@ -176,7 +214,9 @@ export default function MyLoanPage() {
     ? (vestaLoan.borrowers?.[0]?.fullName || [vestaLoan.borrowers?.[0]?.firstName, vestaLoan.borrowers?.[0]?.lastName].filter(Boolean).join(' '))
     : ([pi.firstName, pi.lastName].filter(Boolean).join(' ') || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim());
 
-  const loanNumber = hasVesta ? vestaLoan.loanNumber : sbLoan?.temp_loan_number;
+  const loanNumber = hasVesta
+    ? (vestaLoan?.loanNumber != null ? String(vestaLoan.loanNumber) : null)
+    : supabaseDisplayLoanNumber(sbLoan);
   const loanAmount = hasVesta ? vestaLoan.loanAmount : ld.loanAmount;
   const loanPurpose = hasVesta ? vestaLoan.loanPurpose : ld.loanPurpose;
   const loanType = hasVesta ? (vestaLoan.loanProduct?.mortgageType || vestaLoan.loanType) : ld.loanType;
@@ -247,7 +287,7 @@ export default function MyLoanPage() {
             <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-5 sm:px-8 sm:py-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  {loanNumber && <p className="text-slate-400 text-sm mb-1">Ref #{loanNumber}</p>}
+                  {loanNumber && <p className="text-slate-400 text-sm mb-1">Loan #{loanNumber}</p>}
                   <h2 className="text-2xl sm:text-3xl font-bold text-white">{fmtCurrency(loanAmount) || 'Loan Submitted'}</h2>
                   <div className="flex items-center gap-3 mt-2">
                     {loanType && <span className="text-slate-300 text-sm">{loanType}</span>}
@@ -402,7 +442,6 @@ export default function MyLoanPage() {
           <OverviewContent
             hasVesta={hasVesta} vestaLoan={vestaLoan}
             pi={pi} ld={ld} pr={pr} emp={emp}
-            sbConditions={sbConditions} openConditions={openConditions} clearedConditions={clearedConditions}
           />
         )}
         {activeTab === 'financials' && hasVesta && (
@@ -433,7 +472,7 @@ export default function MyLoanPage() {
 /* ═══════════════════════════════════════════════════
    OVERVIEW TAB
    ═══════════════════════════════════════════════════ */
-function OverviewContent({ hasVesta, vestaLoan, pi, ld, pr, emp, sbConditions, openConditions, clearedConditions }: any) {
+function OverviewContent({ hasVesta, vestaLoan, pi, ld, pr, emp }: any) {
   return (
     <div className="space-y-6">
       {/* Row 1: Monthly Payment / Rate & Loan Details / Loan Officer — same layout for both paths */}
@@ -558,40 +597,6 @@ function OverviewContent({ hasVesta, vestaLoan, pi, ld, pr, emp, sbConditions, o
           </div>
         </div>
       )}
-
-      {/* Conditions quick-glance */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Conditions &amp; Checklist</h3>
-          {sbConditions.length > 0 && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-green-600 font-medium">{clearedConditions.length} cleared</span>
-              <span className="text-gray-300">|</span>
-              <span className="text-amber-600 font-medium">{openConditions.length} action needed</span>
-            </div>
-          )}
-        </div>
-        {sbConditions.length === 0 ? (
-          <div className="text-center py-10">
-            <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
-              <FileText className="w-7 h-7 text-gray-300" />
-            </div>
-            <p className="text-gray-500 font-medium mb-1">No conditions yet</p>
-            <p className="text-sm text-gray-400 max-w-md mx-auto">
-              Your loan officer will add conditions here once they've reviewed your application. You'll be notified when items need your attention.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {sbConditions.slice(0, 5).map((c: any) => (
-              <ConditionItem key={c.id} c={c as ConditionRow} />
-            ))}
-            {sbConditions.length > 5 && (
-              <p className="text-sm text-gray-500 text-center pt-2">+ {sbConditions.length - 5} more — see Conditions tab</p>
-            )}
-          </div>
-        )}
-      </div>
 
       {/* What to Expect — shown for both paths */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

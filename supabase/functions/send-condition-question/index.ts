@@ -56,7 +56,7 @@ function buildEmailHtml(payload: ConditionQuestionRequest): string {
           <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#1d4ed8,#1e40af);padding:32px 40px;border-radius:12px 12px 0 0;text-align:center;">
-              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">HomeLoanAgents</h1>
+              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">United Fidelity Funding</h1>
               <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Borrower Question Received</p>
             </td>
           </tr>
@@ -128,11 +128,11 @@ function buildEmailHtml(payload: ConditionQuestionRequest): string {
           <tr>
             <td style="background-color:#f8fafc;padding:24px 40px;border-radius:0 0 12px 12px;border-top:1px solid #e2e8f0;">
               <p style="margin:0 0 8px;color:#64748b;font-size:12px;text-align:center;line-height:1.5;">
-                This email was sent from the HomeLoanAgents Borrower Portal.<br />
+                This email was sent from the United Fidelity Funding Borrower Portal.<br />
                 The borrower submitted this question through the loan conditions page.
               </p>
               <p style="margin:0;color:#94a3b8;font-size:11px;text-align:center;line-height:1.5;">
-                &copy; ${year} HomeLoanAgents. All rights reserved. NMLS #XXXXXX.<br />
+                &copy; ${year} United Fidelity Funding. All rights reserved. NMLS #260271.<br />
                 Equal Housing Lender. This is not a commitment to lend.
               </p>
             </td>
@@ -174,6 +174,9 @@ Deno.serve(async (req: Request) => {
     const borrowerFirst = payload.borrowerName?.split(" ")[0] || "Borrower";
     const subject = `Question from ${payload.borrowerName} - ${payload.conditionName || "Loan Condition"}${payload.loanNumber ? ` (Loan #${payload.loanNumber})` : ""}`;
 
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "noreply@uff.loans";
+    const fromName = Deno.env.get("RESEND_FROM_NAME") || "UFF Borrower Portal";
+
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -181,7 +184,7 @@ Deno.serve(async (req: Request) => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: `HomeLoanAgents Portal <send@homeloanagents.com>`,
+        from: `${fromName} <${fromEmail}>`,
         to: [payload.loanOfficerEmail],
         reply_to: payload.borrowerEmail || undefined,
         subject,

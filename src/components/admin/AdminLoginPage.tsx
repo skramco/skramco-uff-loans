@@ -4,9 +4,15 @@ import { adminLogin } from '../../services/adminService';
 
 interface Props {
   onLogin: (password: string) => void;
+  title?: string;
+  subtitle?: string;
 }
 
-export default function AdminLoginPage({ onLogin }: Props) {
+export default function AdminLoginPage({
+  onLogin,
+  title = 'Admin Access',
+  subtitle = 'Restricted area',
+}: Props) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,8 +42,8 @@ export default function AdminLoginPage({ onLogin }: Props) {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-slate-800 border border-slate-700 mb-4">
             <ShieldCheck className="w-7 h-7 text-slate-400" />
           </div>
-          <h1 className="text-xl font-bold text-white">Admin Access</h1>
-          <p className="text-sm text-slate-500 mt-1">Restricted area</p>
+          <h1 className="text-xl font-bold text-white">{title}</h1>
+          <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
         </div>
 
         {error && (

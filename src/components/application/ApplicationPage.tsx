@@ -4,7 +4,9 @@ import { useApplicationForm } from '../../hooks/useApplicationForm';
 import type { SectionKey } from '../../hooks/useApplicationForm';
 import {
   enqueueVestaCreateJob,
+  pollLoanVestaSync,
   triggerVestaSyncForLoan,
+  type LoanVestaSyncState,
 } from '../../services/vestaService';
 import { mapLoanApplicationToVesta, VESTA_MAPPING_VERSION } from '../../lib/mapLoanApplicationToVesta';
 import { supabase } from '../../lib/supabase';
@@ -12,7 +14,7 @@ import WizardMode from './WizardMode';
 import DirectMode from './DirectMode';
 import ProtectedRoute from '../ProtectedRoute';
 import { Link, useNavigate } from 'react-router-dom';
-import { LayoutList, Wand2, CheckCircle, Home, FileText, Save, PartyPopper, Sparkles, Mail, Shield, DollarSign, MapPin, Briefcase, User } from 'lucide-react';
+import { LayoutList, Wand2, CheckCircle, Home, FileText, Save, PartyPopper, Sparkles, Mail, Shield, DollarSign, MapPin, Briefcase, User, AlertTriangle, Loader2 } from 'lucide-react';
 import ComplianceFooter from '../layout/ComplianceFooter';
 import confetti from 'canvas-confetti';
 
@@ -31,6 +33,8 @@ function ApplicationContent({ existingLoanId }: Props) {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [savingExit, setSavingExit] = useState(false);
+  const [vestaSyncState, setVestaSyncState] = useState<LoanVestaSyncState | null>(null);
+  const [vestaSyncWarning, setVestaSyncWarning] = useState('');
 
   const {
     loanId,
@@ -69,6 +73,8 @@ function ApplicationContent({ existingLoanId }: Props) {
 
   async function handleSubmit() {
     setSubmitError('');
+    setVestaSyncWarning('');
+    setVestaSyncState(null);
     setSubmitting(true);
 
     try {
@@ -76,6 +82,7 @@ function ApplicationContent({ existingLoanId }: Props) {
       if (!result.success) throw new Error(result.error || 'Failed to submit');
 
       const activeLoanId = result.loanId || loanId;
+      let syncWarning = '';
 
       if (activeLoanId) {
         try {
@@ -86,6 +93,8 @@ function ApplicationContent({ existingLoanId }: Props) {
             VESTA_MAPPING_VERSION
           );
           if (!enq.ok) {
+            syncWarning =
+              'Your application was saved. LOS sync could not be queued — our team will link your file shortly.';
             console.error('Vesta queue enqueue failed:', enq.error);
           } else {
             await supabase
@@ -94,12 +103,33 @@ function ApplicationContent({ existingLoanId }: Props) {
               .eq('id', activeLoanId);
 
             const sync = await triggerVestaSyncForLoan(activeLoanId);
-            if (!sync.success && sync.message) {
+            if (!sync.success) {
+              syncWarning =
+                sync.message ||
+                'Your application was saved. LOS sync is in progress — we will confirm your loan number shortly.';
               console.warn('Vesta sync worker:', sync.message);
+            }
+
+            const polled = await pollLoanVestaSync(activeLoanId, {
+              timeoutMs: 45_000,
+              intervalMs: 2_000,
+            });
+            if (polled) {
+              setVestaSyncState(polled);
+              if (!polled.vesta_loan_id && polled.vesta_sync_status === 'failed') {
+                syncWarning =
+                  'Your application was received. We are finishing setup in our loan system — a team member will confirm your loan number soon.';
+              }
             }
           }
         } catch (vestaErr) {
+          syncWarning =
+            'Your application was saved. LOS sync will complete shortly — our team has been notified.';
           console.error('Vesta error (non-blocking):', vestaErr);
+        }
+
+        if (syncWarning) {
+          setVestaSyncWarning(syncWarning);
         }
 
         // Send confirmation email
@@ -167,7 +197,15 @@ function ApplicationContent({ existingLoanId }: Props) {
   }
 
   if (submitted) {
-    return <SubmissionSuccess formData={formData} loanId={loanId} tempLoanNumber={tempLoanNumber} />;
+    return (
+      <SubmissionSuccess
+        formData={formData}
+        loanId={loanId}
+        tempLoanNumber={tempLoanNumber}
+        vestaSyncState={vestaSyncState}
+        vestaSyncWarning={vestaSyncWarning}
+      />
+    );
   }
 
   if (isSubmitted) {
@@ -278,10 +316,14 @@ function SubmissionSuccess({
   formData,
   loanId,
   tempLoanNumber,
+  vestaSyncState,
+  vestaSyncWarning,
 }: {
   formData: any;
   loanId: string | null;
   tempLoanNumber: string | null;
+  vestaSyncState: LoanVestaSyncState | null;
+  vestaSyncWarning: string;
 }) {
   const confettiFired = useRef(false);
 
@@ -389,12 +431,41 @@ function SubmissionSuccess({
               <CheckCircle className="w-4 h-4" />
               <span>Application received &mdash; {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
             </div>
-            {tempLoanNumber && (
+            {(vestaSyncState?.vesta_loan_number || vestaSyncState?.vesta_loan_id || tempLoanNumber) && (
               <p className="mt-3 text-sm text-gray-500">
-                Reference: <span className="font-mono font-semibold text-gray-700">{tempLoanNumber}</span>
+                {vestaSyncState?.vesta_loan_number ? (
+                  <>
+                    Loan number:{' '}
+                    <span className="font-mono font-semibold text-gray-700">
+                      {vestaSyncState.vesta_loan_number}
+                    </span>
+                  </>
+                ) : vestaSyncState?.vesta_loan_id ? (
+                  <>
+                    Loan file created — your loan number will appear shortly.
+                  </>
+                ) : (
+                  <>
+                    Reference:{' '}
+                    <span className="font-mono font-semibold text-gray-700">{tempLoanNumber}</span>
+                  </>
+                )}
+              </p>
+            )}
+            {!vestaSyncState?.vesta_loan_id && vestaSyncState?.vesta_sync_status === 'queued' && (
+              <p className="mt-2 text-sm text-gray-500 flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Setting up your loan file…
               </p>
             )}
           </div>
+
+          {vestaSyncWarning && (
+            <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex gap-3 text-amber-900">
+              <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
+              <p className="text-sm">{vestaSyncWarning}</p>
+            </div>
+          )}
 
           {/* Summary cards — only show cards with data */}
           {summaryCards.length > 0 && (

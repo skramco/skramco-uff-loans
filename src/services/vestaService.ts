@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { formatBorrowerNoteMessage } from '../lib/vestaConditions';
 import type { VestaLoanPayload } from '../types';
 
 const FUNCTIONS_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
@@ -18,6 +19,25 @@ export interface BorrowerLoginResult {
   error: string | null;
   originatorEmail: string | null;
   zipMismatch: boolean;
+}
+
+/** Load full Vesta loan by GUID (for portal display after email login). */
+export async function fetchVestaLoanById(
+  vestaLoanId: string
+): Promise<Record<string, unknown> | null> {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${FUNCTIONS_BASE}/vesta-integration`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ action: 'getLoan', vestaLoanId }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.loan) return null;
+    return data.loan;
+  } catch {
+    return null;
+  }
 }
 
 export async function borrowerLogin(
@@ -117,7 +137,8 @@ export async function updateLoanInVesta(vestaLoanId: string, payload: Partial<Ve
 
 export async function fetchLoanConditions(
   loanId: string,
-  statuses?: string[]
+  statuses?: string[],
+  categories: string[] = ['Borrower']
 ): Promise<{ conditions: any[] | null; error: string | null }> {
   try {
     const headers = await getAuthHeaders();
@@ -128,6 +149,7 @@ export async function fetchLoanConditions(
         action: 'fetchConditions',
         loanId,
         statuses,
+        categories,
       }),
     });
 
@@ -214,6 +236,47 @@ export async function enqueueVestaCreateJob(
   }
 }
 
+export interface LoanVestaSyncState {
+  vesta_loan_id: string | null;
+  vesta_loan_number: string | null;
+  vesta_sync_status: string | null;
+  temp_loan_number: string | null;
+}
+
+export async function fetchLoanVestaSyncState(
+  loanId: string
+): Promise<LoanVestaSyncState | null> {
+  const { data, error } = await supabase
+    .from('loans')
+    .select('vesta_loan_id, vesta_loan_number, vesta_sync_status, temp_loan_number')
+    .eq('id', loanId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as LoanVestaSyncState;
+}
+
+/** Poll until synced, failed, or timeout (ms). */
+export async function pollLoanVestaSync(
+  loanId: string,
+  options: { timeoutMs?: number; intervalMs?: number } = {}
+): Promise<LoanVestaSyncState | null> {
+  const timeoutMs = options.timeoutMs ?? 60_000;
+  const intervalMs = options.intervalMs ?? 2_000;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const state = await fetchLoanVestaSyncState(loanId);
+    if (!state) return null;
+    if (state.vesta_loan_id || state.vesta_sync_status === 'failed') {
+      return state;
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+
+  return fetchLoanVestaSyncState(loanId);
+}
+
 export async function triggerVestaSyncForLoan(loanId: string): Promise<{
   success: boolean;
   vestaLoanId?: string | null;
@@ -242,10 +305,61 @@ export async function triggerVestaSyncForLoan(loanId: string): Promise<{
   }
 }
 
+export interface UploadConditionDocumentOptions {
+  documentTypeId?: string;
+  documentRequiredTaskIds?: string[];
+  objectiveConditionId?: string;
+  objectiveTaskId?: string;
+  conditionLabel?: string;
+  note?: string;
+  borrowerId?: string;
+}
+
+export async function createBorrowerLoanNote(
+  loanId: string,
+  note: string,
+  options?: {
+    objectiveConditionId?: string;
+    objectiveTaskId?: string;
+    documentId?: string;
+    conditionLabel?: string;
+  }
+): Promise<{ success: boolean; error: string | null }> {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${FUNCTIONS_BASE}/vesta-integration`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        action: 'createLoanNote',
+        loanId,
+        message: formatBorrowerNoteMessage(note, {
+          conditionLabel: options?.conditionLabel,
+        }),
+        objectiveConditionId: options?.objectiveConditionId,
+        objectiveTaskId: options?.objectiveTaskId,
+        documentId: options?.documentId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: errorData.message || `Failed to add note (${response.status})`,
+      };
+    }
+
+    return { success: true, error: null };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Network error adding note' };
+  }
+}
+
 export async function uploadDocumentToVesta(
   vestaLoanId: string,
   file: File,
-  _documentType: string
+  options: UploadConditionDocumentOptions = {}
 ): Promise<{ success: boolean; documentId: string | null; error: string | null }> {
   try {
     const headers = await getAuthHeaders();
@@ -260,6 +374,13 @@ export async function uploadDocumentToVesta(
         fileName: file.name,
         fileContentType: file.type || 'application/octet-stream',
         fileBase64: base64Data,
+        documentTypeId: options.documentTypeId,
+        documentRequiredTaskIds: options.documentRequiredTaskIds,
+        objectiveConditionId: options.objectiveConditionId,
+        objectiveTaskId: options.objectiveTaskId,
+        conditionLabel: options.conditionLabel,
+        note: options.note,
+        borrowerId: options.borrowerId,
       }),
     });
 

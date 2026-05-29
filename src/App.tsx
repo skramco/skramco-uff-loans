@@ -20,7 +20,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import ApplicationPage from './components/application/ApplicationPage';
 import MyLoanPage from './pages/MyLoanPage';
-import AdminPage from './components/admin/AdminPage';
+import VestaOpsPage from './pages/internal/VestaOpsPage';
 import MarketPulsePage from './pages/MarketPulsePage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 
@@ -53,7 +53,7 @@ export default function App() {
         <Route path="/apply" element={<ApplicationPage />} />
         <Route path="/dashboard" element={<MyLoanPage />} />
         <Route path="/my-loan" element={<MyLoanPage />} />
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/ops/uff-vesta-sync" element={<VestaOpsPage />} />
 
         <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
         <Route path="/buy" element={<PublicLayout><LandingPage intent="buy" /></PublicLayout>} />

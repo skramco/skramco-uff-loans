@@ -120,14 +120,23 @@ export function extractProperty(loan: any): ExtractedProperty {
     fullAddress: formatAddress(addr) || safeString(sp.address),
     type: safeString(sp.propertyType || sp.type, 'Single Family'),
     occupancy: safeString(sp.occupancyType || sp.occupancy, 'Primary Residence'),
-    value: safeNumber(sp.estimatedValue || sp.appraisedValue || sp.value || loan?.propertyValue),
+    value: safeNumber(
+      sp.estimatedValueAmount ||
+      sp.actualValueAmount ||
+      sp.estimatedValue ||
+      sp.appraisedValue ||
+      sp.value ||
+      loan?.propertyValue
+    ),
   };
 }
 
 export function extractFinancials(loan: any): ExtractedFinancials {
   const loanAmount = safeNumber(loan?.loanAmount || loan?.baseLoanAmount || loan?.currentLoanAmount);
   const propertyValue = safeNumber(
-    loan?.subjectProperty?.estimatedValue
+    loan?.subjectProperty?.estimatedValueAmount
+    || loan?.subjectProperty?.actualValueAmount
+    || loan?.subjectProperty?.estimatedValue
     || loan?.subjectProperty?.appraisedValue
     || loan?.propertyValue
     || loan?.purchasePrice

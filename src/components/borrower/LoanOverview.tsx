@@ -9,11 +9,22 @@ export default function LoanOverview({ loan }: LoanOverviewProps) {
   const loanNumber = loan.loanNumber;
   const loanAmount = loan.loanAmount;
   const purchasePrice = loan.salesContractPurchasePrice;
+  const propertyValue =
+    loan.subjectProperty?.estimatedValueAmount ??
+    loan.subjectProperty?.actualValueAmount;
   const downPayment = loan.downPaymentAmount;
   const downPaymentPct = loan.downPaymentPercentage;
   const ltv = loan.loanToValueRatio;
   const currentStage = loan.currentLoanStage;
   const loanPurpose = loan.loanPurpose;
+  const isRefinance =
+    typeof loanPurpose === 'string' &&
+    loanPurpose.toLowerCase().includes('refinance');
+  const currentMortgageBalance =
+    loan.currentMortgageBalanceAmount ??
+    loan.currentMortgageBalance ??
+    loan.unpaidPrincipalBalance ??
+    loan.currentUnpaidPrincipalBalanceAmount;
   const loanType = loan.loanProduct?.mortgageType || loan.loanType;
 
   const stageColorMap: Record<string, string> = {
@@ -35,13 +46,15 @@ export default function LoanOverview({ loan }: LoanOverviewProps) {
     },
     {
       label: purchasePrice ? 'Purchase Price' : 'Property Value',
-      value: formatCurrency(purchasePrice || loan.subjectProperty?.actualValueAmount),
+      value: formatCurrency(purchasePrice || propertyValue),
       icon: Home,
       accent: 'text-emerald-600 bg-emerald-50',
     },
     {
-      label: 'Down Payment',
-      value: downPayment ? `${formatCurrency(downPayment)} (${formatPercent(downPaymentPct, 1)})` : '--',
+      label: isRefinance ? 'Current Balance' : 'Down Payment',
+      value: isRefinance
+        ? (currentMortgageBalance != null ? formatCurrency(currentMortgageBalance) : '--')
+        : (downPayment ? `${formatCurrency(downPayment)} (${formatPercent(downPaymentPct, 1)})` : '--'),
       icon: ArrowDown,
       accent: 'text-teal-600 bg-teal-50',
     },

@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.vesta-integration]
 verify_jwt = false
+
+[functions.vesta-sync-cron]
+verify_jwt = false

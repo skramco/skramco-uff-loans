@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { postCreateLoan } from "../_shared/vestaCreateLoan.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -93,39 +94,18 @@ async function handleCreateLoan(config: VestaConfig, payload: any) {
   }
 
   try {
-    const response = await fetch(vestaLoansCollectionUrl(config.apiUrl), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Token ${config.apiKey}`,
-        "x-Api-Version": config.apiVersion,
-      },
-      body: JSON.stringify({
-        borrowerFirstName: payload.borrowerFirstName,
-        borrowerLastName: payload.borrowerLastName,
-        borrowerEmail: payload.borrowerEmail,
-        loanAmount: payload.loanAmount,
-        propertyAddress: payload.propertyAddress,
-        loanType: payload.loanType,
-        loanPurpose: payload.loanPurpose,
-        propertyValue: payload.propertyValue,
-        applicationData: payload.applicationData,
-        urlaMapped: payload.urlaMapped,
-        mappingVersion: payload.mappingVersion,
-      }),
-    });
+    const result = await postCreateLoan(config, payload as Record<string, unknown>);
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (!result.ok) {
       return errorResponse(
-        `Vesta API error: ${errorText}`,
-        response.status
+        `Vesta API error: ${result.body}`,
+        result.status >= 400 ? result.status : 502
       );
     }
 
-    const data = await response.json();
     return jsonResponse({
-      vestaLoanId: data.loanId || data.id || null,
+      vestaLoanId: result.vestaId,
+      vestaLoanNumber: result.vestaLoanNumber,
       message: "Loan created in Vesta successfully",
     });
   } catch (err: any) {
@@ -310,7 +290,8 @@ async function handleBorrowerLogin(
 async function handleFetchConditions(
   config: VestaConfig,
   loanId: string,
-  statuses?: string[]
+  statuses?: string[],
+  categories?: string[]
 ) {
   if (!config.apiUrl || !config.apiKey) {
     return errorResponse("Vesta integration not configured.", 503);
@@ -322,6 +303,10 @@ async function handleFetchConditions(
     const conditionsUrl = new URL(
       `${baseUrl}/loans/${encodeURIComponent(loanId)}/objective-conditions`
     );
+    const cats = categories?.length ? categories : ["Borrower"];
+    for (const cat of cats) {
+      conditionsUrl.searchParams.append("categories", cat);
+    }
     if (statuses && statuses.length > 0) {
       for (const s of statuses) {
         conditionsUrl.searchParams.append("statuses", s);
@@ -369,35 +354,35 @@ const vestaJsonHeaders = (config: VestaConfig) => ({
 
 /**
  * Vesta contract for borrower uploads:
- * 1) GET loan → processVersionId (always present on loan)
- * 2) GET admin-config/{processVersionId}/document-types → id for name "Uncategorized" (always present)
+ * 1) GET /admin-config → defaultProcessVersionId
+ * 2) GET /admin-config/{defaultProcessVersionId}/document-types
+ * 3) Use document type where name === "Uncategorized"
  */
 async function resolveUncategorizedDocumentTypeId(
   config: VestaConfig,
-  baseUrl: string,
-  vestaLoanId: string
-): Promise<{ documentTypeId: string } | { error: string; status: number }> {
-  const loanUrl = `${baseUrl}/loans/${encodeURIComponent(vestaLoanId)}`;
-  const loanRes = await fetch(loanUrl, {
+  baseUrl: string
+): Promise<{ documentTypeId: string; documentTypeName: string } | { error: string; status: number }> {
+  const adminConfigUrl = `${baseUrl}/admin-config`;
+  const adminConfigRes = await fetch(adminConfigUrl, {
     method: "GET",
     headers: vestaJsonHeaders(config),
   });
 
-  if (!loanRes.ok) {
-    const t = await loanRes.text();
+  if (!adminConfigRes.ok) {
+    const t = await adminConfigRes.text();
     return {
-      error: `Could not load loan for document upload (${loanRes.status}): ${t}`,
-      status: loanRes.status,
+      error: `Could not load admin-config (${adminConfigRes.status}): ${t}`,
+      status: adminConfigRes.status,
     };
   }
 
-  const loan = await loanRes.json();
-  const processVersionId = loan?.processVersionId;
+  const adminConfig = await adminConfigRes.json();
+  const processVersionId = adminConfig?.defaultProcessVersionId;
 
   if (!processVersionId || typeof processVersionId !== "string") {
     return {
       error:
-        "Expected loan.processVersionId from Vesta; check API version or loan payload.",
+        "Expected admin-config.defaultProcessVersionId from Vesta.",
       status: 422,
     };
   }
@@ -441,7 +426,93 @@ async function resolveUncategorizedDocumentTypeId(
     };
   }
 
-  return { documentTypeId: id };
+  return { documentTypeId: id, documentTypeName: "Uncategorized" };
+}
+
+const BORROWER_NOTE_PREFIX = "[Borrower Portal]";
+
+function formatBorrowerPortalNote(
+  message: string,
+  extras?: { conditionLabel?: string; fileName?: string }
+): string {
+  const parts = [BORROWER_NOTE_PREFIX];
+  if (extras?.conditionLabel) parts.push(`Condition: ${extras.conditionLabel}`);
+  if (extras?.fileName) parts.push(`Document: ${extras.fileName}`);
+  parts.push("", message.trim());
+  return parts.join("\n");
+}
+
+async function postLoanNote(
+  config: VestaConfig,
+  loanId: string,
+  body: {
+    message: string;
+    objectiveConditionId?: string;
+    objectiveTaskId?: string;
+    documentId?: string;
+  }
+): Promise<{ ok: boolean; error?: string; status?: number }> {
+  if (!config.apiUrl || !config.apiKey) {
+    return { ok: false, error: "Vesta integration not configured.", status: 503 };
+  }
+
+  const noteMessage = body.message?.trim();
+  if (!noteMessage) {
+    return { ok: false, error: "message is required", status: 400 };
+  }
+
+  const baseUrl = config.apiUrl.replace(/\/+$/, "");
+  const payload: Record<string, string> = {
+    message: noteMessage.startsWith(BORROWER_NOTE_PREFIX)
+      ? noteMessage
+      : formatBorrowerPortalNote(noteMessage),
+  };
+  if (body.objectiveConditionId) {
+    payload.objectiveConditionId = body.objectiveConditionId;
+  }
+  if (body.objectiveTaskId) payload.objectiveTaskId = body.objectiveTaskId;
+  if (body.documentId) payload.documentId = body.documentId;
+
+  const response = await fetch(
+    `${baseUrl}/loans/${encodeURIComponent(loanId)}/notes`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Token ${config.apiKey}`,
+        "x-Api-Version": config.apiVersion,
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    return {
+      ok: false,
+      error: `Vesta note error (${response.status}): ${errorText}`,
+      status: response.status,
+    };
+  }
+
+  return { ok: true };
+}
+
+async function handleCreateLoanNote(
+  config: VestaConfig,
+  loanId: string,
+  body: {
+    message: string;
+    objectiveConditionId?: string;
+    objectiveTaskId?: string;
+    documentId?: string;
+  }
+) {
+  const result = await postLoanNote(config, loanId, body);
+  if (!result.ok) {
+    return errorResponse(result.error || "Failed to create note", result.status || 502);
+  }
+  return jsonResponse({ success: true, message: "Note added to loan" });
 }
 
 async function handleUploadDocument(
@@ -449,7 +520,16 @@ async function handleUploadDocument(
   vestaLoanId: string,
   fileBase64: string,
   fileName: string,
-  fileContentType: string
+  fileContentType: string,
+  options?: {
+    documentTypeId?: string;
+    documentRequiredTaskIds?: string[];
+    note?: string;
+    objectiveConditionId?: string;
+    objectiveTaskId?: string;
+    conditionLabel?: string;
+    borrowerId?: string;
+  }
 ) {
   if (!config.apiUrl || !config.apiKey) {
     return jsonResponse({
@@ -461,60 +541,106 @@ async function handleUploadDocument(
   }
 
   const baseUrl = config.apiUrl.replace(/\/+$/, "");
+  const uploadUrl = `${baseUrl}/loans/${encodeURIComponent(vestaLoanId)}/documents`;
 
   try {
-    const resolved = await resolveUncategorizedDocumentTypeId(
-      config,
-      baseUrl,
-      vestaLoanId
-    );
+    // Per Vesta dev contract, always upload as "Uncategorized" resolved from admin-config.
+    const resolved = await resolveUncategorizedDocumentTypeId(config, baseUrl);
     if ("error" in resolved) {
       return errorResponse(resolved.error, resolved.status);
     }
-    const { documentTypeId } = resolved;
+    const documentTypeId = resolved.documentTypeId;
+    const documentTypeName = resolved.documentTypeName;
 
     const fileBytes = base64ToUint8Array(fileBase64);
 
-    const metadata = JSON.stringify({
-      associatedEntities: [
-        {
-          entityId: vestaLoanId,
-          entityType: "Loan",
-        },
-      ],
+    const metadata: Record<string, unknown> = {
       documentTypeId,
       status: "Uploaded",
-    });
-
-    const formData = new FormData();
-    formData.append(
-      "metadata",
-      new Blob([metadata], { type: "application/json" }),
-    );
-    formData.append(
-      "filename",
-      new Blob([fileBytes], { type: fileContentType }),
-      fileName
-    );
-
-    const response = await fetch(
-      `${baseUrl}/loans/${encodeURIComponent(vestaLoanId)}/documents`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Token ${config.apiKey}`,
-          "x-Api-Version": config.apiVersion,
-        },
-        body: formData,
+    };
+    // Vesta dev behavior: Uncategorized document uploads must not send associatedEntities.
+    const isUncategorized = documentTypeName === "Uncategorized";
+    if (!isUncategorized) {
+      const associatedEntities: Array<{ entityId: string; entityType: "Borrower" | "Loan" }> = [];
+      if (options?.borrowerId) {
+        associatedEntities.push({
+          entityId: options.borrowerId,
+          entityType: "Borrower",
+        });
       }
-    );
+      associatedEntities.push({
+        entityId: vestaLoanId,
+        entityType: "Loan",
+      });
+      metadata.associatedEntities = associatedEntities;
+    }
+    if (options?.documentRequiredTaskIds?.length) {
+      metadata.documentRequiredTaskIds = options.documentRequiredTaskIds;
+    }
+
+    const buildFormData = (uploadMetadata: Record<string, unknown>) => {
+      const fd = new FormData();
+      fd.append(
+        "metadata",
+        new Blob([JSON.stringify(uploadMetadata)], { type: "application/json" }),
+      );
+      fd.append(
+        "filename",
+        new Blob([fileBytes], { type: fileContentType }),
+        fileName
+      );
+      return fd;
+    };
+
+    const uploadHeaders = {
+      Authorization: `Token ${config.apiKey}`,
+      "x-Api-Version": config.apiVersion,
+    };
+    let response = await fetch(uploadUrl, {
+      method: "POST",
+      headers: uploadHeaders,
+      body: buildFormData(metadata),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      return errorResponse(
-        `Vesta API error: ${errorText}`,
-        response.status
-      );
+      const canRetryWithoutTaskLink =
+        Array.isArray(options?.documentRequiredTaskIds) &&
+        options.documentRequiredTaskIds.length > 0 &&
+        errorText.includes("objectiveTaskIds were invalid");
+
+      const canRetryBorrowerOnlyEntity =
+        Boolean(options?.borrowerId) &&
+        errorText.includes("Invalid associated entity") &&
+        Array.isArray(metadata.associatedEntities);
+
+      if (!canRetryWithoutTaskLink && !canRetryBorrowerOnlyEntity) {
+        return errorResponse(`Vesta API error: ${errorText}`, response.status);
+      }
+
+      // Fallback 1: upload without documentRequiredTaskIds when Vesta rejects task linkage.
+      if (canRetryWithoutTaskLink) {
+        delete metadata.documentRequiredTaskIds;
+      }
+      // Fallback 2: borrower-only association for borrower-scoped document types.
+      if (canRetryBorrowerOnlyEntity && options?.borrowerId) {
+        metadata.associatedEntities = [
+          {
+            entityId: options.borrowerId,
+            entityType: "Borrower",
+          },
+        ];
+      }
+
+      response = await fetch(uploadUrl, {
+        method: "POST",
+        headers: uploadHeaders,
+        body: buildFormData(metadata),
+      });
+      if (!response.ok) {
+        const fallbackError = await response.text();
+        return errorResponse(`Vesta API error: ${fallbackError}`, response.status);
+      }
     }
 
     const responseText = await response.text();
@@ -527,6 +653,24 @@ async function handleUploadDocument(
           : parsed.documentId || parsed.id || null;
     } catch {
       documentId = responseText.replace(/^"|"$/g, "").trim() || null;
+    }
+
+    if (options?.note?.trim()) {
+      const noteResult = await postLoanNote(config, vestaLoanId, {
+        message: formatBorrowerPortalNote(options.note, {
+          conditionLabel: options.conditionLabel,
+          fileName,
+        }),
+        objectiveConditionId: options.objectiveConditionId,
+        objectiveTaskId: options.objectiveTaskId,
+        documentId: documentId || undefined,
+      });
+      if (!noteResult.ok) {
+        return errorResponse(
+          noteResult.error || "Document uploaded but note failed",
+          noteResult.status || 502
+        );
+      }
     }
 
     return jsonResponse({
@@ -571,8 +715,18 @@ Deno.serve(async (req: Request) => {
         return await handleFetchConditions(
           config,
           body.loanId,
-          body.statuses
+          body.statuses,
+          body.categories
         );
+      case "createLoanNote":
+        if (!body.loanId) return errorResponse("loanId is required");
+        if (!body.message) return errorResponse("message is required");
+        return await handleCreateLoanNote(config, body.loanId, {
+          message: body.message,
+          objectiveConditionId: body.objectiveConditionId,
+          objectiveTaskId: body.objectiveTaskId,
+          documentId: body.documentId,
+        });
       case "uploadDocument":
         if (!vestaLoanId || !body.fileBase64 || !body.fileName)
           return errorResponse(
@@ -583,8 +737,46 @@ Deno.serve(async (req: Request) => {
           vestaLoanId,
           body.fileBase64,
           body.fileName,
-          body.fileContentType || "application/octet-stream"
+          body.fileContentType || "application/octet-stream",
+          {
+            documentTypeId: body.documentTypeId,
+            documentRequiredTaskIds: body.documentRequiredTaskIds,
+            note: body.note,
+            objectiveConditionId: body.objectiveConditionId,
+            objectiveTaskId: body.objectiveTaskId,
+            conditionLabel: body.conditionLabel,
+            borrowerId: body.borrowerId,
+          }
         );
+      case "getLoan":
+        if (!vestaLoanId) return errorResponse("vestaLoanId is required");
+        if (!config.apiUrl || !config.apiKey) {
+          return errorResponse("Vesta integration not configured.", 503);
+        }
+        try {
+          const loanRes = await fetch(
+            vestaLoanItemUrl(config.apiUrl, vestaLoanId),
+            {
+              method: "GET",
+              headers: {
+                Accept: "application/json",
+                Authorization: `Token ${config.apiKey}`,
+                "x-Api-Version": config.apiVersion,
+              },
+            }
+          );
+          if (!loanRes.ok) {
+            const errorText = await loanRes.text();
+            return errorResponse(
+              `Vesta API error: ${errorText}`,
+              loanRes.status
+            );
+          }
+          const loan = await loanRes.json();
+          return jsonResponse({ loan });
+        } catch (err: any) {
+          return errorResponse(`Vesta connection error: ${err.message}`, 502);
+        }
       default:
         return errorResponse(`Unknown action: ${action}`);
     }

@@ -1,5 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  computeNextRetryAt,
+  getVestaConfig,
+  postCreateLoan,
+  VESTA_MAX_SYNC_ATTEMPTS,
+} from "../_shared/vestaCreateLoan.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,65 +14,6 @@ const corsHeaders = {
     "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-interface VestaConfig {
-  apiUrl: string;
-  apiKey: string;
-  apiVersion: string;
-}
-
-async function getVestaConfig(): Promise<VestaConfig> {
-  try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    const { data } = await supabase
-      .from("admin_settings")
-      .select("vesta_environment")
-      .eq("id", 1)
-      .maybeSingle();
-
-    const env = data?.vesta_environment || "dev";
-
-    if (env === "production") {
-      return {
-        apiUrl:
-          Deno.env.get("VESTA_PROD_API_URL") ||
-          "https://uff.vesta.com/api/v1",
-        apiKey: Deno.env.get("VESTA_PROD_API_KEY") || "",
-        apiVersion: Deno.env.get("VESTA_PROD_API_VERSION") || "26.1",
-      };
-    }
-
-    return {
-      apiUrl:
-        Deno.env.get("VESTA_DEV_API_URL") ||
-        "https://uff.beta.vesta.com/api/v1",
-      apiKey:
-        Deno.env.get("VESTA_DEV_API_KEY") ||
-        Deno.env.get("VESTA_API_KEY") ||
-        "",
-      apiVersion:
-        Deno.env.get("VESTA_DEV_API_VERSION") ||
-        Deno.env.get("VESTA_API_VERSION") ||
-        "26.1",
-    };
-  } catch {
-    return {
-      apiUrl:
-        Deno.env.get("VESTA_API_URL") ||
-        "https://uff.beta.vesta.com/api/v1",
-      apiKey: Deno.env.get("VESTA_API_KEY") || "",
-      apiVersion: Deno.env.get("VESTA_API_VERSION") || "26.1",
-    };
-  }
-}
-
-function vestaLoansCollectionUrl(apiUrl: string): string {
-  return `${apiUrl.replace(/\/+$/, "")}/loans`;
-}
-
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -74,53 +21,69 @@ function jsonResponse(data: unknown, status = 200) {
   });
 }
 
-async function postCreateLoan(
-  config: VestaConfig,
-  payload: Record<string, unknown>
-): Promise<{ ok: boolean; status: number; body: string; vestaId: string | null }> {
-  if (!config.apiUrl || !config.apiKey) {
-    return {
-      ok: false,
-      status: 503,
-      body: "Vesta not configured",
-      vestaId: null,
-    };
+async function resetStuckJobs(supabaseService: ReturnType<typeof createClient>) {
+  await supabaseService.rpc("reset_stuck_vesta_sync_jobs", { p_stale_minutes: 15 });
+}
+
+async function markJobSuccess(
+  supabaseService: ReturnType<typeof createClient>,
+  jobId: string,
+  loanId: string,
+  vestaId: string,
+  vestaLoanNumber: string | null,
+  now: string
+) {
+  await supabaseService
+    .from("vesta_sync_jobs")
+    .update({
+      status: "succeeded",
+      vesta_loan_id: vestaId,
+      last_error: null,
+      next_retry_at: null,
+      updated_at: now,
+    })
+    .eq("id", jobId);
+
+  const loanUpdate: Record<string, unknown> = {
+    vesta_loan_id: vestaId,
+    vesta_sync_status: "synced",
+    updated_at: now,
+  };
+  if (vestaLoanNumber) {
+    loanUpdate.vesta_loan_number = vestaLoanNumber;
   }
 
-  const response = await fetch(vestaLoansCollectionUrl(config.apiUrl), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Token ${config.apiKey}`,
-      "x-Api-Version": config.apiVersion,
-    },
-    body: JSON.stringify({
-      borrowerFirstName: payload.borrowerFirstName,
-      borrowerLastName: payload.borrowerLastName,
-      borrowerEmail: payload.borrowerEmail,
-      loanAmount: payload.loanAmount,
-      propertyAddress: payload.propertyAddress,
-      loanType: payload.loanType,
-      loanPurpose: payload.loanPurpose,
-      propertyValue: payload.propertyValue,
-      applicationData: payload.applicationData,
-      urlaMapped: payload.urlaMapped,
-      mappingVersion: payload.mappingVersion,
-    }),
-  });
+  await supabaseService.from("loans").update(loanUpdate).eq("id", loanId);
+}
 
-  const text = await response.text();
-  let vestaId: string | null = null;
-  if (response.ok) {
-    try {
-      const data = JSON.parse(text);
-      vestaId = data.loanId || data.id || null;
-    } catch {
-      vestaId = text.replace(/^"|"$/g, "").trim() || null;
-    }
-  }
+async function markJobFailure(
+  supabaseService: ReturnType<typeof createClient>,
+  job: { id: string; attempt_count: number },
+  loanId: string,
+  errMsg: string,
+  now: string
+) {
+  const canRetry = job.attempt_count < VESTA_MAX_SYNC_ATTEMPTS;
+  const nextStatus = canRetry ? "pending" : "dead_letter";
+  const loanStatus = canRetry ? "queued" : "failed";
 
-  return { ok: response.ok, status: response.status, body: text, vestaId };
+  await supabaseService
+    .from("vesta_sync_jobs")
+    .update({
+      status: nextStatus,
+      last_error: errMsg,
+      next_retry_at: canRetry ? computeNextRetryAt(job.attempt_count) : null,
+      updated_at: now,
+    })
+    .eq("id", job.id);
+
+  await supabaseService
+    .from("loans")
+    .update({
+      vesta_sync_status: loanStatus,
+      updated_at: now,
+    })
+    .eq("id", loanId);
 }
 
 Deno.serve(async (req: Request) => {
@@ -146,6 +109,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabaseService = createClient(supabaseUrl, serviceKey);
+  await resetStuckJobs(supabaseService);
 
   const isServiceCaller = authHeader === `Bearer ${serviceKey}`;
 
@@ -183,7 +147,7 @@ Deno.serve(async (req: Request) => {
           updated_at: new Date().toISOString(),
         })
         .eq("loan_id", loanId)
-        .in("status", ["pending", "processing"]);
+        .in("status", ["pending", "processing", "failed"]);
 
       await supabaseService
         .from("loans")
@@ -197,6 +161,7 @@ Deno.serve(async (req: Request) => {
         processed: 0,
         message: "Already linked to Vesta",
         vestaLoanId: loan.vesta_loan_id,
+        success: true,
       });
     }
   }
@@ -216,7 +181,7 @@ Deno.serve(async (req: Request) => {
         updated_at: new Date().toISOString(),
       })
       .eq("loan_id", loanId)
-      .in("status", ["pending", "processing"]);
+      .in("status", ["pending", "processing", "failed"]);
 
     await supabaseService
       .from("loans")
@@ -230,6 +195,7 @@ Deno.serve(async (req: Request) => {
       processed: 0,
       vestaLoanId: existingLoan.vesta_loan_id,
       message: "Already linked",
+      success: true,
     });
   }
 
@@ -247,10 +213,10 @@ Deno.serve(async (req: Request) => {
 
   const job = Array.isArray(claimed) ? claimed[0] : claimed;
   if (!job?.id) {
-    return jsonResponse({ processed: 0, message: "No pending jobs" });
+    return jsonResponse({ processed: 0, message: "No pending jobs", success: true });
   }
 
-  const config = await getVestaConfig();
+  const config = await getVestaConfig(supabaseUrl, serviceKey);
   const payload = (job.payload_json || {}) as Record<string, unknown>;
 
   const result = await postCreateLoan(config, payload);
@@ -258,29 +224,20 @@ Deno.serve(async (req: Request) => {
   const now = new Date().toISOString();
 
   if (result.ok && result.vestaId) {
-    await supabaseService
-      .from("vesta_sync_jobs")
-      .update({
-        status: "succeeded",
-        vesta_loan_id: result.vestaId,
-        last_error: null,
-        updated_at: now,
-      })
-      .eq("id", job.id);
-
-    await supabaseService
-      .from("loans")
-      .update({
-        vesta_loan_id: result.vestaId,
-        vesta_sync_status: "synced",
-        updated_at: now,
-      })
-      .eq("id", loanId);
+    await markJobSuccess(
+      supabaseService,
+      job.id,
+      loanId,
+      result.vestaId,
+      result.vestaLoanNumber,
+      now
+    );
 
     return jsonResponse({
       processed: 1,
       success: true,
       vestaLoanId: result.vestaId,
+      vestaLoanNumber: result.vestaLoanNumber,
     });
   }
 
@@ -288,28 +245,14 @@ Deno.serve(async (req: Request) => {
     ? "Vesta returned success without loan id"
     : `Vesta error (${result.status}): ${result.body.slice(0, 2000)}`;
 
-  await supabaseService
-    .from("vesta_sync_jobs")
-    .update({
-      status: "failed",
-      last_error: errMsg,
-      updated_at: now,
-    })
-    .eq("id", job.id);
-
-  await supabaseService
-    .from("loans")
-    .update({
-      vesta_sync_status: "failed",
-      updated_at: now,
-    })
-    .eq("id", loanId);
+  await markJobFailure(supabaseService, job, loanId, errMsg, now);
 
   return jsonResponse(
     {
       processed: 1,
       success: false,
       message: errMsg,
+      retryScheduled: job.attempt_count < VESTA_MAX_SYNC_ATTEMPTS,
     },
     200
   );

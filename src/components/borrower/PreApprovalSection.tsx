@@ -32,7 +32,10 @@ export default function PreApprovalSection({ loan }: PreApprovalSectionProps) {
     : 'Ready to submit with your offer';
 
   const loanAmount = loan.loanAmount;
-  const purchasePrice = loan.salesContractPurchasePrice || loan.subjectProperty?.actualValueAmount;
+  const purchasePrice =
+    loan.salesContractPurchasePrice ||
+    loan.subjectProperty?.estimatedValueAmount ||
+    loan.subjectProperty?.actualValueAmount;
   const borrowerName =
     loan.primaryBorrowerFullName ||
     loan.borrowers?.[0]?.fullName ||
