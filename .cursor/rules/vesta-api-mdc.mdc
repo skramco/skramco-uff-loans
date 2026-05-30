@@ -1,0 +1,20 @@
+---
+description: 
+alwaysApply: true
+---
+
+---
+description: Vesta LOS OpenAPI — use when changing Vesta sync, mappers, or edge functions
+globs:
+  - supabase/functions/**/vesta*
+  - supabase/functions/_shared/vesta*
+  - supabase/functions/_shared/buildVestaPayload.ts
+  - src/**/vesta*
+  - src/lib/mapLoanApplicationToVesta.ts
+  - docs/vesta/**
+alwaysApply: false
+---
+
+Before changing Vesta request/response mapping, consult:
+- docs/vesta/openapi.json — source of truth
+- docs/vesta/README.md — environment and version notes

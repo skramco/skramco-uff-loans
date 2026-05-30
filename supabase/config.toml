@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.vesta-sync-cron]
 verify_jwt = false
+
+[functions.marketing-automation]
+verify_jwt = false
+
+[functions.marketing-cron]
+verify_jwt = false
