@@ -16,11 +16,17 @@ import {
   loadTokensFromSettings,
   refreshCanvaToken,
 } from "./canvaClient.ts";
-import { generateCampaignContent, finalizeGeneratedCampaign } from "./campaignGenerator.ts";
+import {
+  generateCampaignContent,
+  finalizeGeneratedCampaign,
+  campaignRowToGeneratedContent,
+} from "./campaignGenerator.ts";
 import {
   createAndPublishProLandingPage,
   updateLandingPageHeroImage,
+  LANDING_PAGE_PLACEHOLDER,
 } from "./proLandingPage.ts";
+import { PRO_PORTAL_PUBLIC_PAGE_URL } from "./proPortalContext.ts";
 import {
   buildImagePrompt,
   generateMarketingImage,
@@ -32,7 +38,7 @@ import {
   publishOrganizationPost,
 } from "./linkedInClient.ts";
 import { MarketingRepository } from "./repository.ts";
-import type { CampaignType, GeneratedCampaignContent } from "./types.ts";
+import type { CampaignType, GeneratedCampaignContent, MarketingCampaignRow } from "./types.ts";
 import { fetchVestaAggregateInsights, getPerformanceSummary } from "./vestaInsights.ts";
 import {
   buildTipCampaignUserPrompt,
@@ -76,28 +82,15 @@ export async function runCampaignGeneration(
       : undefined,
   });
 
+  rawContent.linkedin_post = rawContent.linkedin_post
+    .replaceAll(LANDING_PAGE_PLACEHOLDER, PRO_PORTAL_PUBLIC_PAGE_URL)
+    .trim();
+
   const campaignId = crypto.randomUUID();
 
-  let landingMeta: {
-    slug?: string;
-    url?: string;
-    githubPath?: string;
-    githubCommit?: string;
-    skipped?: boolean;
-    reason?: string;
-  } = {};
-
-  try {
-    const landing = await createAndPublishProLandingPage(campaignId, rawContent);
-    landingMeta = landing;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Landing page publish failed";
-    console.warn("Pro landing page failed:", msg);
-    landingMeta = { skipped: true, reason: msg };
-  }
-
   const content = finalizeGeneratedCampaign(rawContent, {
-    ctaUrl: landingMeta.url,
+    ctaUrl: PRO_PORTAL_PUBLIC_PAGE_URL,
+    attachLandingToLinkedIn: false,
   });
 
   const status = content.approval_required ? "pending_approval" : "draft";
@@ -122,12 +115,11 @@ export async function runCampaignGeneration(
     metadata: {
       generation: { at: new Date().toISOString(), useVestaInsights: !!opts.useVestaInsights },
       call_to_action: content.call_to_action,
-      landing_page_slug: landingMeta.slug,
-      landing_page_url: landingMeta.url,
-      landing_page_github_path: landingMeta.githubPath,
-      landing_page_github_commit: landingMeta.githubCommit,
-      landing_page_skipped: landingMeta.skipped,
-      landing_page_skip_reason: landingMeta.reason,
+      email_body_fragment: rawContent.email_html,
+      email_text_fragment: rawContent.email_text,
+      landing_page_status: "pending_approval",
+      landing_page_url: null,
+      landing_page_slug: null,
       growthTip: opts.tipBrief
         ? {
             tipNumber: opts.tipBrief.tipNumber,
@@ -137,31 +129,15 @@ export async function runCampaignGeneration(
     },
   });
 
-  if (landingMeta.skipped && landingMeta.reason && landingMeta.reason !== "GITHUB_TOKEN not configured") {
-    await logMarketingAction(repo, {
-      campaignId: campaign.id,
-      action: "pro_landing_page_failed",
-      actorType: opts.actorType ?? "system",
-      details: { error: landingMeta.reason },
-    });
-  } else if (landingMeta.slug && !landingMeta.skipped) {
-    await logMarketingAction(repo, {
-      campaignId: campaign.id,
-      action: "pro_landing_page_published",
-      actorType: opts.actorType ?? "system",
-      details: {
-        slug: landingMeta.slug,
-        url: landingMeta.url,
-        githubCommit: landingMeta.githubCommit,
-      },
-    });
-  }
-
   await logMarketingAction(repo, {
     campaignId: campaign.id,
     action: "campaign_generated",
     actorType: opts.actorType ?? "system",
-    details: { campaignType: opts.campaignType, approvalRequired: content.approval_required },
+    details: {
+      campaignType: opts.campaignType,
+      approvalRequired: content.approval_required,
+      landingPageDeferred: true,
+    },
   });
 
   if (content.linkedin_post) {
@@ -187,6 +163,166 @@ export async function runCampaignGeneration(
   }
 
   return { campaignId: campaign.id, content };
+}
+
+/** Publish uff.pro landing page and rewrite email/LinkedIn links — call when campaign is approved. */
+export async function publishLandingPageOnApproval(
+  supabase: SupabaseClient,
+  campaignId: string,
+  actorType: "user" | "scheduler" | "system" = "user"
+): Promise<MarketingCampaignRow> {
+  const repo = new MarketingRepository(supabase);
+  const campaign = await repo.getCampaign(campaignId);
+  if (!campaign) throw new Error("Campaign not found");
+
+  const meta = (campaign.metadata ?? {}) as Record<string, unknown>;
+  if (meta.landing_page_status === "published" && meta.landing_page_url) {
+    return campaign;
+  }
+
+  const generated = campaignRowToGeneratedContent(campaign, meta);
+  let landingMeta: {
+    slug?: string;
+    url?: string;
+    githubPath?: string;
+    githubCommit?: string;
+    skipped?: boolean;
+    reason?: string;
+  } = {};
+
+  try {
+    landingMeta = await createAndPublishProLandingPage(campaignId, generated);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Landing page publish failed";
+    await logMarketingAction(repo, {
+      campaignId,
+      action: "pro_landing_page_failed",
+      actorType,
+      details: { error: msg },
+    });
+    throw e;
+  }
+
+  const finalized = finalizeGeneratedCampaign(generated, {
+    ctaUrl: landingMeta.url,
+    heroImageUrl: campaign.image_asset_url ?? undefined,
+    attachLandingToLinkedIn: true,
+  });
+
+  const updatedMeta: Record<string, unknown> = {
+    ...meta,
+    landing_page_status: landingMeta.skipped ? "skipped" : "published",
+    landing_page_slug: landingMeta.slug,
+    landing_page_url: landingMeta.url,
+    landing_page_github_path: landingMeta.githubPath,
+    landing_page_github_commit: landingMeta.githubCommit,
+    landing_page_skipped: landingMeta.skipped,
+    landing_page_skip_reason: landingMeta.reason,
+  };
+
+  const updated = await repo.updateCampaign(campaignId, {
+    email_html: finalized.email_html,
+    email_text: finalized.email_text,
+    linkedin_post: finalized.linkedin_post,
+    metadata: updatedMeta,
+  });
+
+  const queue = await repo.getLinkedInQueue(campaignId);
+  const queueRow = (queue as Array<{ id: string }>)[0];
+  if (queueRow) {
+    await repo.updateLinkedInQueue(queueRow.id, { post_text: finalized.linkedin_post });
+  }
+
+  if (landingMeta.slug && campaign.image_asset_url && !landingMeta.skipped) {
+    try {
+      await updateLandingPageHeroImage(landingMeta.slug, campaign.image_asset_url);
+    } catch (e) {
+      console.warn("Landing page hero update failed:", e);
+    }
+  }
+
+  if (!landingMeta.skipped) {
+    await logMarketingAction(repo, {
+      campaignId,
+      action: "pro_landing_page_published",
+      actorType,
+      details: {
+        slug: landingMeta.slug,
+        url: landingMeta.url,
+        githubCommit: landingMeta.githubCommit,
+        trigger: "approval",
+      },
+    });
+  }
+
+  return updated;
+}
+
+export async function approveCampaignWithLanding(
+  supabase: SupabaseClient,
+  campaignId: string,
+  actorType: "user" | "scheduler" | "system" = "user"
+): Promise<MarketingCampaignRow> {
+  const repo = new MarketingRepository(supabase);
+  const campaign = await repo.getCampaign(campaignId);
+  if (!campaign) throw new Error("Campaign not found");
+
+  await publishLandingPageOnApproval(supabase, campaignId, actorType);
+
+  const updated = await repo.updateCampaign(campaignId, {
+    status: "approved",
+    approved_at: new Date().toISOString(),
+  });
+
+  await logMarketingAction(repo, {
+    campaignId,
+    action: "campaign_approved",
+    actorType,
+    details: { approver: "admin", landingPublished: true },
+  });
+
+  return updated;
+}
+
+const DELETABLE_CAMPAIGN_STATUSES = new Set([
+  "draft",
+  "pending_approval",
+  "approved",
+  "failed",
+  "cancelled",
+]);
+
+export async function deleteMarketingCampaign(
+  supabase: SupabaseClient,
+  campaignId: string,
+  actorType: "user" | "scheduler" | "system" = "user"
+): Promise<void> {
+  const repo = new MarketingRepository(supabase);
+  const campaign = await repo.getCampaign(campaignId);
+  if (!campaign) throw new Error("Campaign not found");
+
+  if (!DELETABLE_CAMPAIGN_STATUSES.has(campaign.status)) {
+    throw new Error(
+      `Cannot delete campaign with status "${campaign.status}". Cancel or wait until send completes.`
+    );
+  }
+
+  if (campaign.status === "scheduled") {
+    throw new Error("Cannot delete a scheduled campaign. Cancel it first.");
+  }
+
+  await repo.deleteCampaign(campaignId);
+
+  await logMarketingAction(repo, {
+    campaignId: null,
+    action: "campaign_deleted",
+    actorType,
+    details: {
+      deletedCampaignId: campaignId,
+      title: campaign.title,
+      campaignType: campaign.campaign_type,
+    },
+  });
 }
 
 /** Research one broker growth tip and create a full campaign (+ image). */
@@ -451,6 +587,15 @@ export async function runActiveCampaignSend(
   );
   if (!sendCheck.allowed) {
     throw new Error(sendCheck.reason ?? "Send not allowed");
+  }
+
+  const meta = (campaign.metadata ?? {}) as Record<string, unknown>;
+  if (meta.landing_page_status !== "published" || !meta.landing_page_url) {
+    if (campaign.status === "approved" || !campaign.approval_required) {
+      await publishLandingPageOnApproval(supabase, campaignId, opts.actorType ?? "user");
+      const refreshed = await repo.getCampaign(campaignId);
+      if (refreshed) Object.assign(campaign, refreshed);
+    }
   }
 
   const isResend = campaign.status === "sent" || campaign.status === "scheduled" || campaign.status === "failed";

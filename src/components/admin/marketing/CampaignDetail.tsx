@@ -14,11 +14,13 @@ import {
   ArrowLeft,
   AlertTriangle,
   ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import {
   getCampaign,
   approveCampaign,
   rejectCampaign,
+  deleteCampaign,
   sendCampaign,
   scheduleCampaign,
   regenerateField,
@@ -171,6 +173,9 @@ export default function CampaignDetail({ password }: Props) {
   }
 
   const canApprove = ['draft', 'pending_approval'].includes(campaign.status);
+  const canDelete = ['draft', 'pending_approval', 'approved', 'failed', 'cancelled'].includes(
+    campaign.status
+  );
   const canSend = ['approved', 'sent', 'scheduled', 'failed'].includes(campaign.status);
   const isResend = ['sent', 'scheduled', 'failed'].includes(campaign.status);
   const sendListId = settingsListId || campaign.activecampaign_list_id || '';
@@ -186,6 +191,7 @@ export default function CampaignDetail({ password }: Props) {
     typeof campaign.metadata?.landing_page_url === 'string'
       ? campaign.metadata.landing_page_url
       : null;
+  const landingPending = campaign.metadata?.landing_page_status === 'pending_approval';
   const landingPageSkipped = campaign.metadata?.landing_page_skipped === true;
   const landingSkipReason =
     typeof campaign.metadata?.landing_page_skip_reason === 'string'
@@ -228,7 +234,20 @@ export default function CampaignDetail({ password }: Props) {
                   icon={CheckCircle}
                   label="Approve"
                   busy={busy}
-                  onClick={() => runAction('Approve', () => approveCampaign(password, campaign.id))}
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        'Approve this campaign? This will publish the uff.pro landing page and update email/LinkedIn links.'
+                      )
+                    ) {
+                      return;
+                    }
+                    void runAction('Approve', async () => {
+                      const result = await approveCampaign(password, campaign.id);
+                      if (result.error) return { error: result.error };
+                      return { success: true };
+                    });
+                  }}
                   className="bg-emerald-700 hover:bg-emerald-600"
                 />
                 <ActionBtn
@@ -253,6 +272,34 @@ export default function CampaignDetail({ password }: Props) {
                   void runAction(isResend ? 'Resend' : 'Send', () => sendCampaign(password, campaign.id));
                 }}
                 className="bg-indigo-600 hover:bg-indigo-500"
+              />
+            )}
+            {canDelete && (
+              <ActionBtn
+                icon={Trash2}
+                label="Delete"
+                busy={busy}
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      'Delete this campaign permanently? This cannot be undone.'
+                    )
+                  ) {
+                    return;
+                  }
+                  void (async () => {
+                    setBusy('Delete');
+                    setError('');
+                    const result = await deleteCampaign(password, campaign.id);
+                    setBusy('');
+                    if (result.error) {
+                      setError(result.error);
+                    } else {
+                      window.location.href = '/admin/marketing/campaigns';
+                    }
+                  })();
+                }}
+                className="border border-red-800/60 text-red-300 hover:bg-red-950/50"
               />
             )}
           </div>
@@ -284,6 +331,25 @@ export default function CampaignDetail({ password }: Props) {
               This campaign was generated with list <strong>{campaign.activecampaign_list_id}</strong>, but
               send will use your current Settings list <strong>{settingsListId}</strong> ({sendListLabel}).
               Change the list under Marketing → Settings before sending.
+            </p>
+          </div>
+        )}
+
+        {landingPending && !landingPageUrl && (
+          <div className="mt-4 rounded-lg border border-slate-600 bg-slate-800/40 px-4 py-3 text-sm text-slate-300">
+            <p className="font-medium text-slate-200">Landing page pending approval</p>
+            <p className="mt-1 text-xs text-slate-500">
+              The uff.pro landing page will be created when you approve this campaign. Until then,
+              email links point to{' '}
+              <a
+                href="https://uff.pro/pro-portal"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-400 hover:underline"
+              >
+                uff.pro/pro-portal
+              </a>
+              .
             </p>
           </div>
         )}

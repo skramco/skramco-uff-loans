@@ -11,7 +11,7 @@ import {
 } from "./proLandingPage.ts";
 
 import type { BrokerGrowthTip } from "./brokerGrowthTips.ts";
-import { PRO_PORTAL_PRODUCT_CONTEXT, needsProPortalContext } from "./proPortalContext.ts";
+import { PRO_PORTAL_PRODUCT_CONTEXT, PRO_PORTAL_PUBLIC_PAGE_URL, needsProPortalContext } from "./proPortalContext.ts";
 import {
   MARKET_COMMENTARY_PROMPT_RULES,
   MARKET_DATA_CAMPAIGN_TYPES,
@@ -177,25 +177,73 @@ export async function generateCampaignContent(
 /** Wrap body fragment with UFF email shell; optionally point CTA + body links to landing page. */
 export function finalizeGeneratedCampaign(
   campaign: GeneratedCampaignContent,
-  opts?: { ctaUrl?: string; heroImageUrl?: string }
+  opts?: {
+    ctaUrl?: string;
+    heroImageUrl?: string;
+    /** When false, LinkedIn copy is not updated with landing URL (used until campaign approval). */
+    attachLandingToLinkedIn?: boolean;
+  }
 ): GeneratedCampaignContent {
-  const bodyFragment = opts?.ctaUrl
-    ? rewriteBodyLinksForLanding(campaign.email_html, opts.ctaUrl)
-    : campaign.email_html;
-  const plainText = opts?.ctaUrl
-    ? rewritePlainTextLinksForLanding(campaign.email_text, opts.ctaUrl)
-    : campaign.email_text;
+  const ctaUrl = opts?.ctaUrl ?? PRO_PORTAL_PUBLIC_PAGE_URL;
+  const bodyFragment = rewriteBodyLinksForLanding(campaign.email_html, ctaUrl);
+  const plainText = rewritePlainTextLinksForLanding(campaign.email_text, ctaUrl);
+
+  const attachLinkedIn = opts?.attachLandingToLinkedIn !== false && !!opts?.ctaUrl;
 
   return {
     ...campaign,
     email_html: finalizeCampaignEmail(
       { ...campaign, email_html: bodyFragment, email_text: plainText },
-      { heroImageUrl: opts?.heroImageUrl, ctaUrl: opts.ctaUrl }
+      { heroImageUrl: opts?.heroImageUrl, ctaUrl }
     ),
     email_text: appendAccountExecutivePlainText(plainText),
-    linkedin_post: opts?.ctaUrl
-      ? rewriteLinkedInPostForLanding(campaign.linkedin_post, opts.ctaUrl)
-      : campaign.linkedin_post,
+    linkedin_post:
+      attachLinkedIn && opts?.ctaUrl
+        ? rewriteLinkedInPostForLanding(campaign.linkedin_post, opts.ctaUrl)
+        : campaign.linkedin_post,
+  };
+}
+
+export function campaignRowToGeneratedContent(
+  campaign: {
+    id: string;
+    campaign_type: string;
+    title?: string | null;
+    internal_summary?: string | null;
+    email_subject?: string | null;
+    preview_text?: string | null;
+    email_html?: string | null;
+    email_text?: string | null;
+    linkedin_post?: string | null;
+    canva_prompt?: string | null;
+    compliance_risk_score?: number | null;
+    approval_required?: boolean;
+  },
+  meta: Record<string, unknown>
+): GeneratedCampaignContent {
+  const bodyFragment =
+    typeof meta.email_body_fragment === "string"
+      ? meta.email_body_fragment
+      : (campaign.email_html ?? "");
+  const textFragment =
+    typeof meta.email_text_fragment === "string"
+      ? meta.email_text_fragment
+      : (campaign.email_text ?? "");
+
+  return {
+    campaign_type: campaign.campaign_type as CampaignType,
+    title: campaign.title ?? "UFF Update",
+    internal_summary: campaign.internal_summary ?? "",
+    email_subject: campaign.email_subject ?? "",
+    preview_text: campaign.preview_text ?? "",
+    email_html: bodyFragment,
+    email_text: textFragment,
+    linkedin_post: campaign.linkedin_post ?? "",
+    canva_prompt: campaign.canva_prompt ?? "",
+    call_to_action:
+      typeof meta.call_to_action === "string" ? meta.call_to_action : "Log in to PRO Portal",
+    compliance_risk_score: campaign.compliance_risk_score ?? 0.3,
+    approval_required: campaign.approval_required ?? true,
   };
 }
 
@@ -259,7 +307,10 @@ export async function regenerateField(
         compliance_risk_score: 0.3,
         approval_required: true,
       },
-      { ctaUrl: landingUrl }
+      {
+        ctaUrl: landingUrl ?? PRO_PORTAL_PUBLIC_PAGE_URL,
+        attachLandingToLinkedIn: !!landingUrl,
+      }
     );
     patch.email_html = finalized.email_html;
     patch.email_text = finalized.email_text;

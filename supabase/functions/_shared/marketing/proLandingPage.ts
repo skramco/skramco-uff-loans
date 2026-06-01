@@ -5,6 +5,7 @@
 
 import { callOpenAI } from "./openaiClient.ts";
 import { PRO_PORTAL_PRODUCT_CONTEXT } from "./proPortalContext.ts";
+import { PRO_PORTAL_PRODUCT_CONTEXT } from "./proPortalContext.ts";
 import type { GeneratedCampaignContent } from "./types.ts";
 
 export const LANDING_PAGE_PLACEHOLDER = "{{LANDING_PAGE_URL}}";
@@ -142,7 +143,8 @@ async function generateLandingPageJson(
   const slug = slugifyCampaignTitle(content.title, campaignId);
   const systemPrompt = `You write broker-facing landing page content for United Fidelity Funding (UFF) wholesale mortgage.
 Return JSON only. Content must be practical, specific, and valuable for mortgage brokers — not generic marketing fluff.
-Do not promise specific rates or guaranteed approvals. NMLS 34381. Audience: wholesale brokers using PRO Portal.
+Do not promise specific rates or guaranteed approvals. NMLS 34381. Audience: wholesale brokers.
+PRO Portal is loan origination only — do not describe marketing, testimonial, or CRM features on the landing page.
 
 ${PRO_PORTAL_PRODUCT_CONTEXT}`;
 

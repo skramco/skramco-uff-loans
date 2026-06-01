@@ -35,6 +35,8 @@ import {
   runOpenAIImageGeneration,
   runPerformanceReview,
   syncCampaignMetrics,
+  approveCampaignWithLanding,
+  deleteMarketingCampaign,
 } from "../_shared/marketing/workflow.ts";
 
 const corsHeaders = {
@@ -247,18 +249,25 @@ Deno.serve(async (req: Request) => {
           return errorResponse(`Cannot approve from status ${campaign.status}`);
         }
 
-        const updated = await repo.updateCampaign(body.campaignId, {
-          status: "approved",
-          approved_at: new Date().toISOString(),
-        });
+        try {
+          const updated = await approveCampaignWithLanding(supabase, body.campaignId, "user");
+          return jsonResponse({ success: true, campaign: updated });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Approval failed";
+          return errorResponse(msg, 500);
+        }
+      }
 
-        await logMarketingAction(repo, {
-          campaignId: body.campaignId,
-          action: "campaign_approved",
-          actorType: "user",
-          details: { approver: "admin" },
-        });
-        return jsonResponse({ success: true, campaign: updated });
+      case "deleteCampaign": {
+        const campaign = await repo.getCampaign(body.campaignId);
+        if (!campaign) return errorResponse("Campaign not found", 404);
+        try {
+          await deleteMarketingCampaign(supabase, body.campaignId, "user");
+          return jsonResponse({ success: true });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Delete failed";
+          return errorResponse(msg, 400);
+        }
       }
 
       case "rejectCampaign": {

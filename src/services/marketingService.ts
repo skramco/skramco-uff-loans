@@ -193,8 +193,18 @@ export async function regenerateField(
 export async function approveCampaign(
   password: string,
   campaignId: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; campaign?: MarketingCampaign; error?: string }> {
   const response = await marketingFetch({ action: 'approveCampaign', password, campaignId });
+  const { data, error } = await parseResponse<{ campaign: MarketingCampaign }>(response);
+  if (error) return { success: false, error };
+  return { success: true, campaign: data?.campaign };
+}
+
+export async function deleteCampaign(
+  password: string,
+  campaignId: string
+): Promise<{ success: boolean; error?: string }> {
+  const response = await marketingFetch({ action: 'deleteCampaign', password, campaignId });
   const { error } = await parseResponse(response);
   return error ? { success: false, error } : { success: true };
 }
@@ -398,8 +408,15 @@ export const CAMPAIGN_TYPE_OPTIONS = [
   { value: 'pro_portal_feature_spotlight', label: 'PRO Portal Feature Spotlight' },
   { value: 'fha_product_spotlight', label: 'FHA Product Spotlight' },
   { value: 'va_product_spotlight', label: 'VA Product Spotlight' },
+  { value: 'conventional_product_spotlight', label: 'Conventional Product Spotlight' },
+  { value: 'usda_product_spotlight', label: 'USDA Product Spotlight' },
+  { value: 'non_qm_product_spotlight', label: 'Non-QM Product Spotlight' },
+  { value: 'jumbo_product_spotlight', label: 'Jumbo Product Spotlight' },
+  { value: 'broker_recruiting', label: 'Broker Recruiting' },
   { value: 'broker_business_growth_tip', label: 'Broker Business Growth Tip' },
   { value: 'operational_tip', label: 'Operational Tip' },
+  { value: 'closing_timeline_tip', label: 'Closing Timeline Tip' },
+  { value: 'document_checklist_tip', label: 'Document Checklist Tip' },
   { value: 'compliance_broker_education', label: 'Compliance-Safe Broker Education' },
   { value: 'weekly_broker_newsletter', label: 'Weekly Broker Newsletter' },
   { value: 're_engagement_campaign', label: 'Re-Engagement Campaign' },

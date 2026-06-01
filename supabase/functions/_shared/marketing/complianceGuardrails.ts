@@ -83,6 +83,32 @@ function scanText(text: string): { flags: string[]; violations: string[]; score:
     }
   }
 
+  const proPortalMentioned = /\bpro portal\b/i.test(text);
+  if (proPortalMentioned) {
+    const falseProClaims = [
+      "testimonial",
+      "social proof",
+      "marketing material",
+      "marketing content",
+      "video testimonial",
+      "integrate these",
+      "crm",
+      "email campaign",
+      "drip",
+      "rate alert",
+      "market alert",
+      "co-branded",
+      "flyer",
+      "social media",
+    ];
+    for (const phrase of falseProClaims) {
+      if (normalized.includes(phrase)) {
+        violations.push(`PRO Portal may not support: "${phrase}" — see uff.pro/pro-portal`);
+        score += 0.2;
+      }
+    }
+  }
+
   return { flags, violations, score: Math.min(1, score) };
 }
 
@@ -156,8 +182,9 @@ MORTGAGE MARKETING GUARDRAILS — YOU MUST FOLLOW:
 - Keep language broker-facing unless campaign is specifically marked consumer-facing.
 - Never include borrower names, addresses, SSNs, DOB, phone, email, or loan numbers.
 - Do NOT invent Account Executive names or contact info — the email template automatically includes ActiveCampaign merge tags (%AE-NAME%, %AE-TITLE%, %AE-EMAIL%, %AE-PHONE%) filled from each contact's AE record.
-- When referencing PRO Portal, use ONLY capabilities documented at uff.pro/pro-portal. Never invent features (e.g. custom market alerts, appraisal ordering) — see PRO Portal product context in the user prompt when applicable.
+- When referencing PRO Portal, use ONLY capabilities documented at uff.pro/pro-portal. PRO Portal is for wholesale loan origination (create/price/lock loans, upload documents, pipeline, conditions) — NOT marketing tools, testimonials, CRM, or social proof integrations. Never invent features.
 - UFF is a wholesale lender, not a market research publisher. Do not claim UFF sends daily commentary, rate alert services, or proprietary forecasts.
+- If the email topic is broker marketing tactics (testimonials, social media, referrals), do NOT claim PRO Portal implements those tactics — at most, mention logging in to manage UFF loans.
 
 Output valid JSON only with these fields:
 {

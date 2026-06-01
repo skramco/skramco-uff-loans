@@ -89,6 +89,7 @@ export function buildTipCampaignUserPrompt(tip: BrokerGrowthTip): string {
     ``,
     `The email should teach the strategy with a practical checklist, position UFF as a supportive wholesale partner (not consumer-facing rate advertising), and use a CTA like "Log in to PRO Portal" or "Talk to your UFF AE".`,
     `Do NOT welcome them to PRO Portal — they are existing partners.`,
+    `Do NOT claim PRO Portal provides marketing tools, testimonial integration, CRM, or social proof — PRO Portal is loan origination only (uff.pro/pro-portal).`,
     `Return JSON only with all standard campaign fields.`,
   ].join("\n");
 }

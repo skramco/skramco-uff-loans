@@ -3,43 +3,45 @@
  * Use whenever email copy references PRO Portal — do not invent features.
  */
 
+/** Public marketing page — use for pre-approval email CTAs until a campaign landing page is published. */
+export const PRO_PORTAL_PUBLIC_PAGE_URL = "https://www.uff.pro/pro-portal";
+
 export const PRO_PORTAL_PRODUCT_CONTEXT = `
 PRO PORTAL — AUTHORIZED PRODUCT FACTS (source: uff.pro/pro-portal)
-PRO Portal is UFF's cloud-based wholesale loan management platform. Brokers can self-sign up at go.uff.pro/signup and log in at go.uff.pro.
 
-AVAILABLE TODAY (you may reference these):
+WHAT PRO PORTAL IS:
+PRO Portal is UFF's cloud-based wholesale loan origination and pipeline platform. Brokers use it to create loans, price scenarios, lock rates, upload documents, manage their pipeline, and track underwriting conditions with United Fidelity Funding. It is NOT a CRM, marketing automation tool, website builder, or client testimonial/social-proof platform.
+
+AVAILABLE TODAY (only these capabilities may be referenced):
 - Create Loans: loan application creation, auto-populate borrower info, built-in compliance checks, save and resume
 - Price Loans: live rate updates throughout the day, multiple pricing scenarios, LTV calculations, customizable pricing worksheets
 - Lock Loans: one-click rate locks, flexible lock periods, lock extensions, automated lock confirmations
 - Upload Documents: drag-and-drop uploads, automatic document categorization, version control, secure encrypted storage
 - Manage Pipeline: visual pipeline dashboard, milestone tracking, automated status updates, performance analytics
-- View Conditions: live condition updates, priority-based organization, condition resolution tracking, automated notifications (loan/condition status — NOT custom user-configured market alerts)
+- View Conditions: live condition updates, priority-based organization, condition resolution tracking, automated notifications on loan/condition status (NOT custom market alerts or marketing notifications)
 - Platform: 24/7 web access, mobile-responsive, bank-level security, team collaboration with role-based permissions
-- Login: existing partners use go.uff.pro; new brokers self-sign up at go.uff.pro/signup
+- Access: existing partners log in at go.uff.pro; new brokers self-sign up at go.uff.pro/signup
 
-COMING SOON (mention only as roadmap, never as available today):
+COMING SOON (roadmap only — never describe as available today):
 - Order Appraisal, Order Credit, Digital Verifications (VOE/VOI), Initial Disclosures
 
-DO NOT CLAIM OR IMPLY PRO Portal has:
-- Custom automated alerts, rate alert subscriptions, or push notifications for market moves
-- Appraisal ordering, credit pulls, digital verifications, or initial disclosures (not live yet)
-- Features not listed above — if unsure, omit rather than invent
-- That UFF publishes daily market commentary newsletters or proprietary rate forecasts (UFF is a lender, not a market data publisher)
+NEVER CLAIM OR IMPLY PRO Portal can:
+- Integrate client video testimonials, social proof, or marketing materials
+- Run email campaigns, drip sequences, or broker branding tools
+- Store or publish broker marketing content, flyers, or co-branded assets
+- Provide custom automated rate/market alerts or alert subscriptions
+- Order appraisals, pull credit, run verifications, or generate initial disclosures (not live yet)
+- Replace a CRM, LOS for other lenders, or general "business growth" software unrelated to submitting/closing UFF loans
+- Do anything not listed under AVAILABLE TODAY — if unsure, omit the PRO Portal mention entirely
 
-When mentioning PRO Portal, tie the CTA to a real capability above (e.g. price a scenario, check conditions, upload docs).
+WHEN TO MENTION PRO PORTAL:
+Only tie PRO Portal to loan origination workflow (price, lock, submit, upload docs, track conditions, pipeline). Example: "Price the scenario in PRO Portal" or "Upload the remaining conditions in PRO Portal."
+Do NOT use PRO Portal as a solution for broker marketing tactics (testimonials, social media, lead gen, referral programs) unless the sentence is ONLY "log in to manage your UFF pipeline" with no false feature claim.
+
+UFF is a wholesale lender — not a market research publisher. Do not claim UFF sends daily commentary or rate alert services.
 `.trim();
 
-/** Campaign types that should always receive full PRO Portal product context. */
-export const PRO_PORTAL_CONTEXT_CAMPAIGN_TYPES = new Set([
-  "pro_portal_feature_spotlight",
-  "daily_rate_update",
-  "market_commentary",
-  "re_engagement_campaign",
-  "broker_business_growth_tip",
-  "weekly_broker_newsletter",
-  "operational_tip",
-]);
-
-export function needsProPortalContext(campaignType: string): boolean {
-  return PRO_PORTAL_CONTEXT_CAMPAIGN_TYPES.has(campaignType);
+/** All campaign types receive PRO Portal guardrails when copy might mention the platform. */
+export function needsProPortalContext(_campaignType: string): boolean {
+  return true;
 }

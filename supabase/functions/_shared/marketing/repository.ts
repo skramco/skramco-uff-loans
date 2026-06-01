@@ -309,4 +309,9 @@ export class MarketingRepository {
   ): Promise<MarketingCampaignRow> {
     return this.updateCampaign(id, { status: to, ...extra });
   }
+
+  async deleteCampaign(id: string): Promise<void> {
+    const { error } = await this.supabase.from("marketing_campaigns").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+  }
 }
