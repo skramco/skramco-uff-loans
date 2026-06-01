@@ -11,11 +11,15 @@ import {
 } from "./proLandingPage.ts";
 
 import type { BrokerGrowthTip } from "./brokerGrowthTips.ts";
-import { PRO_PORTAL_PRODUCT_CONTEXT, PRO_PORTAL_PUBLIC_PAGE_URL, needsProPortalContext } from "./proPortalContext.ts";
+import { callOpenAI } from "./openaiClient.ts";
 import {
   MARKET_COMMENTARY_PROMPT_RULES,
   MARKET_DATA_CAMPAIGN_TYPES,
+  fetchMarketDataSummary,
 } from "./marketDataContext.ts";
+import { PRO_PORTAL_PRODUCT_CONTEXT, PRO_PORTAL_PUBLIC_PAGE_URL, needsProPortalContext } from "./proPortalContext.ts";
+
+export { callOpenAI };
 
 export interface GenerateOptions {
   campaignType: CampaignType;
@@ -34,11 +38,6 @@ function parseGeneratedJson(raw: string): Record<string, unknown> {
   if (!jsonMatch) throw new Error("No JSON object in AI response");
   return JSON.parse(jsonMatch[0]) as Record<string, unknown>;
 }
-
-import { callOpenAI } from "./openaiClient.ts";
-import { fetchMarketDataSummary } from "./marketDataContext.ts";
-
-export { callOpenAI };
 
 export function buildUserPrompt(options: GenerateOptions): string {
   const parts: string[] = [];

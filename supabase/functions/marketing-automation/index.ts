@@ -43,7 +43,8 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, X-Client-Info, Apikey",
+    "Content-Type, Authorization, X-Client-Info, Apikey, x-client-info, apikey, X-Supabase-Api-Version",
+  "Access-Control-Max-Age": "86400",
 };
 
 const ADMIN_PASSWORD = Deno.env.get("ADMIN_PASSWORD") || "";

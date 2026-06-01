@@ -5,7 +5,6 @@
 
 import { callOpenAI } from "./openaiClient.ts";
 import { PRO_PORTAL_PRODUCT_CONTEXT } from "./proPortalContext.ts";
-import { PRO_PORTAL_PRODUCT_CONTEXT } from "./proPortalContext.ts";
 import type { GeneratedCampaignContent } from "./types.ts";
 
 export const LANDING_PAGE_PLACEHOLDER = "{{LANDING_PAGE_URL}}";

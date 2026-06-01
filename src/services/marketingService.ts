@@ -64,19 +64,32 @@ export interface AuditLogEntry {
 }
 
 async function marketingFetch(body: Record<string, unknown>) {
-  return fetch(`${FUNCTIONS_BASE}/marketing-automation`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${FUNCTIONS_BASE}/marketing-automation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Network error';
+    return new Response(null, {
+      status: 0,
+      statusText: `Failed to reach marketing-automation (${msg}). Check Supabase edge function health.`,
+    });
+  }
+  return response;
 }
 
 async function parseResponse<T>(response: Response): Promise<{ data?: T; error?: string }> {
   try {
+    if (response.status === 0) {
+      return { error: response.statusText || 'Failed to connect to marketing API.' };
+    }
     const text = await response.text();
     if (!text) {
       if (response.status === 404) {

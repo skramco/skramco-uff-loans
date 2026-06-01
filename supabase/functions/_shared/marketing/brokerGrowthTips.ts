@@ -1,6 +1,6 @@
 /** Research and structure broker business-development tip campaigns. */
 
-import { callOpenAI } from "./campaignGenerator.ts";
+import { callOpenAI } from "./openaiClient.ts";
 
 export interface BrokerGrowthTip {
   tipNumber: number;
