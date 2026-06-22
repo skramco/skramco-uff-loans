@@ -91,10 +91,10 @@ Deno.test("getEmailToneSystemPromptBlock includes override for funny", () => {
 });
 
 Deno.test("getEmailToneImageRules returns tone-specific guidance", () => {
-  if (!getEmailToneImageRules("funny").includes("playful")) {
+  if (!getEmailToneImageRules("funny").includes("content-specific")) {
     throw new Error("Funny image rules expected");
   }
-  if (!getEmailToneImageRules("standard").includes("uplifting")) {
+  if (!getEmailToneImageRules("standard").includes("memorable")) {
     throw new Error("Standard image rules expected");
   }
 });

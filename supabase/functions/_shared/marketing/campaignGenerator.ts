@@ -35,6 +35,7 @@ import {
 import { PRO_PORTAL_PRODUCT_CONTEXT, PRO_PORTAL_PUBLIC_PAGE_URL, needsProPortalContext } from "./proPortalContext.ts";
 import { formatLinkedInCaption } from "./linkedinPostFormat.ts";
 import { getLinkedInHashtagHints, LINKEDIN_POST_GUIDANCE } from "./linkedinPostGuidance.ts";
+import { CANVA_PROMPT_GUIDANCE } from "./marketingImageGuidance.ts";
 import {
   DEFAULT_EMAIL_TONE,
   evaluateToneDelivery,
@@ -145,6 +146,7 @@ export function buildUserPrompt(options: GenerateOptions): string {
 
   parts.push(`\n${LINKEDIN_POST_GUIDANCE}`);
   parts.push(`\n${getLinkedInHashtagHints(options.campaignType)}`);
+  parts.push(`\n${CANVA_PROMPT_GUIDANCE}`);
 
   const tone = options.emailTone ?? DEFAULT_EMAIL_TONE;
   parts.push(
@@ -390,7 +392,7 @@ export async function regenerateField(
   const fieldMap: Record<string, string> = {
     subject: "Regenerate only the email_subject and preview_text fields as JSON: { email_subject, preview_text }",
     linkedin: `Regenerate only linkedin_post as JSON: { linkedin_post }. ${LINKEDIN_POST_GUIDANCE}`,
-    canva_prompt: "Regenerate only canva_prompt as JSON: { canva_prompt }",
+    canva_prompt: `Regenerate only canva_prompt as JSON: { canva_prompt }. ${CANVA_PROMPT_GUIDANCE}`,
     email_html:
       "Regenerate email body content as JSON: { email_html, email_text }. email_html must be a BODY FRAGMENT only (paragraphs/highlight boxes — no logo, header, footer, or full HTML document). Keep subject consistent.",
   };

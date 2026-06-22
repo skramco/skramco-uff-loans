@@ -1,5 +1,6 @@
 import { evaluateEducationalValue } from "./brokerIntelligenceContext.ts";
 import { LINKEDIN_POST_GUIDANCE } from "./linkedinPostGuidance.ts";
+import { CANVA_PROMPT_GUIDANCE } from "./marketingImageGuidance.ts";
 import type { ComplianceResult } from "./types.ts";
 
 const FORBIDDEN_PHRASES = [
@@ -210,7 +211,7 @@ Output valid JSON only with these fields:
   "email_html": string (BODY FRAGMENT ONLY — inner content for the white email body cell; do NOT include html/head/body, logo, header, footer, or outer tables. Use professional inline-styled fragments: <p style="font-family:Arial,sans-serif;font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">...</p>, optional highlight boxes with background:#eff6ff;border:1px solid #dbeafe;border-radius:8px;padding:16px. Match the tone of uff.loans transactional emails: clear, professional, broker-focused.),
   "email_text": string (plain-text version of body content only — no HTML),
   "linkedin_post": string (under 3000 chars; order: body → {{LANDING_PAGE_URL}} → hashtags → {{PRO_PORTAL_URL}} at bottom — see LINKEDIN rules below),
-  "canva_prompt": string (design brief for the shared email + LinkedIn hero image — choose ONE visual theme: professional humans, nature, OR abstract corporate America; describe scene and mood; note where a subtle hidden red #dc2626 accent object should appear),
+  "canva_prompt": string (CREATIVE hero image brief — see CANVA PROMPT rules below; must illustrate the email's metaphor/hook, NOT generic office stock),
   "call_to_action": string (short button label, e.g. "Log in to PRO Portal"),
   "compliance_risk_score": number 0-1,
   "consumer_facing": boolean,
@@ -220,5 +221,7 @@ Output valid JSON only with these fields:
 LINKS: In email_html, use href="{{LANDING_PAGE_URL}}" for ALL anchor links (read-more, learn-more, etc.). A broker landing page on uff.pro will replace this placeholder before send.
 
 ${LINKEDIN_POST_GUIDANCE}
+
+${CANVA_PROMPT_GUIDANCE}
 
 The system automatically wraps email_html in the official UFF email template (red header, logo, footer, CTA button). Focus on strong body copy only.`;

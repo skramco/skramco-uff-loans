@@ -213,7 +213,7 @@ EMAIL TONE: FUNNY (engaging humor — still broker-facing and compliance-safe)
 - Include at least one mortgage-industry-appropriate joke, pun, or playful analogy (wholesale brokers are the audience).
 - REQUIRED — Funny Word for this campaign: "${funnyWord}" — define it playfully in the email and reference it in linkedin_post.
 - Subject lines can use wit or wordplay; avoid clickbait and forbidden compliance phrases.
-- canva_prompt: lighter, cheerful visual mood (still professional — no memes, no clown imagery, no text overlays).
+- canva_prompt: creative humorous visual metaphor from the email — absurd but professional (wizard in suit, chart-surfing broker, etc.); NOT generic office laughter.
 - Humor must NOT mock borrowers, veterans, or protected classes; no guaranteed-approval jokes.
 `.trim();
 }
@@ -305,7 +305,7 @@ MANDATORY (verify before finishing JSON):
 1. email_subject — pun, joke hook, or playful wordplay (not a boring corporate subject line).
 2. email_html — open with a mortgage-industry joke OR a highlighted "Funny Word: ${funnyWord}" callout with a playful definition; include at least one additional pun or joke in the body.
 3. linkedin_post — at least one joke or pun in the body section (before the landing link).
-4. canva_prompt — cheerful, slightly playful visual mood (still photorealistic; no memes/clowns).
+4. canva_prompt — vivid, humorous visual metaphor tied to the email joke (e.g. wizard in business suit, absurd pipeline metaphor) — NOT a generic office photo.
 5. Still include numbered broker action steps — humor wraps the intelligence, it does not replace it.
 6. Do NOT include a motivational quote of the day (that is for Standard tone only).
 `.trim();
@@ -425,13 +425,13 @@ Regenerate the FULL JSON. ${toneBlock}
 export function getEmailToneImageRules(tone: EmailTone): string {
   switch (tone) {
     case "funny":
-      return "Visual mood: warm, approachable, slightly playful — bright natural light, subtle humor in composition (e.g. coffee mug with papers), still photorealistic and professional.";
+      return "Visual mood: playful, surprising, content-specific — illustrate the campaign's joke or metaphor (e.g. wizard in business suit, broker taming paperwork dragon). Cinematic photorealism; make brokers smile. NOT generic office stock.";
     case "urgency":
-      return "Visual mood: dynamic forward momentum — motion blur on cityscape, active professionals in focused collaboration, energetic but not chaotic or alarmist.";
+      return "Visual mood: dynamic forward momentum tied to the campaign topic — sprinting broker, countdown light on pipeline board, rocket launch metaphor — energetic but professional.";
     case "real_time":
-      return "Visual mood: current, newsroom-adjacent editorial feel — modern office with screens/data ambiance, timely and relevant to today's market story.";
+      return "Visual mood: timely, news-driven scene tied to today's market story — editorial urgency, screens with charts/headlines as backdrop (no readable text).";
     case "standard":
     default:
-      return "Visual mood: uplifting and confident — inspired by professional growth and steady success.";
+      return "Visual mood: memorable metaphor or scene tied to the campaign topic — not a bland office handshake unless the email is about meetings.";
   }
 }
