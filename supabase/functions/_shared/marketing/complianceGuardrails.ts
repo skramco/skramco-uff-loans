@@ -1,6 +1,7 @@
 import { evaluateEducationalValue } from "./brokerIntelligenceContext.ts";
 import { LINKEDIN_POST_GUIDANCE } from "./linkedinPostGuidance.ts";
 import { CANVA_PROMPT_GUIDANCE } from "./marketingImageGuidance.ts";
+import { scanUnsupportedProducts, UFF_PRODUCT_SCOPE_PROMPT } from "./uffProductScope.ts";
 import type { ComplianceResult } from "./types.ts";
 
 const FORBIDDEN_PHRASES = [
@@ -112,6 +113,11 @@ function scanText(text: string): { flags: string[]; violations: string[]; score:
     }
   }
 
+  const unsupported = scanUnsupportedProducts(text);
+  flags.push(...unsupported.flags);
+  violations.push(...unsupported.violations);
+  score += unsupported.score;
+
   return { flags, violations, score: Math.min(1, score) };
 }
 
@@ -201,6 +207,8 @@ MORTGAGE MARKETING GUARDRAILS — YOU MUST FOLLOW:
 - When referencing PRO Portal, use ONLY capabilities documented at uff.pro/pro-portal. PRO Portal is for wholesale loan origination (create/price/lock loans, upload documents, pipeline, conditions) — NOT marketing tools, testimonials, CRM, or social proof integrations. Never invent features.
 - UFF is a wholesale lender, not a market research publisher. Do not claim UFF sends daily commentary, rate alert services, or proprietary forecasts.
 - If the email topic is broker marketing tactics (testimonials, social media, referrals), do NOT claim PRO Portal implements those tactics — at most, mention logging in to manage UFF loans.
+
+${UFF_PRODUCT_SCOPE_PROMPT}
 
 Output valid JSON only with these fields:
 {

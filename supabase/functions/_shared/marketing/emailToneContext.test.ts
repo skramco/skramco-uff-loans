@@ -7,6 +7,8 @@ import {
   getEmailToneSystemPromptBlock,
   getFunnyWordOfTheDay,
   getMotivationalQuoteOfTheDay,
+  hasEdgyHumorSignals,
+  isCornyHumor,
   parseEmailTone,
   pickRandomFunnyWord,
 } from "./emailToneContext.ts";
@@ -46,15 +48,16 @@ Deno.test("pickRandomFunnyWord returns words from the pool", () => {
   }
 });
 
-Deno.test("getEmailTonePromptBlock uses explicit funnyWord when provided", () => {
+Deno.test("getEmailTonePromptBlock covers all tones", () => {
   const ref = new Date("2026-06-22T12:00:00Z");
   const quote = getMotivationalQuoteOfTheDay(ref);
   const standard = getEmailTonePromptBlock("standard", { ref });
   if (!standard.includes(quote.quote)) throw new Error("Standard tone must include quote");
 
-  const funny = getEmailTonePromptBlock("funny", { funnyWord: "Test-o-rific" });
-  if (!funny.includes("Test-o-rific")) {
-    throw new Error("Funny tone must use provided funnyWord");
+  const funny = getEmailTonePromptBlock("funny");
+  if (!funny.includes("EDGY")) throw new Error("Funny tone must describe edgy humor");
+  if (/funny word for this campaign/i.test(funny)) {
+    throw new Error("Funny tone must not require corny funny-word callouts");
   }
 
   const urgency = getEmailTonePromptBlock("urgency");
@@ -68,26 +71,42 @@ Deno.test("getEmailTonePromptBlock uses explicit funnyWord when provided", () =>
   }
 });
 
-Deno.test("evaluateToneDelivery detects funny tone markers", () => {
-  const fail = evaluateToneDelivery("funny", { email_subject: "Market update" });
-  if (fail.passes) throw new Error("Expected funny tone failure");
+Deno.test("evaluateToneDelivery rejects dry and corny funny copy", () => {
+  const dry = evaluateToneDelivery("funny", { email_subject: "Market update" });
+  if (dry.passes) throw new Error("Expected funny tone failure for dry copy");
 
-  const pass = evaluateToneDelivery(
-    "funny",
-    { email_html: "Funny Word of the Day: Lock-tastic — a broker term", email_subject: "A punny subject" },
-    { funnyWord: "Lock-tastic" }
-  );
-  if (!pass.passes) throw new Error(`Expected funny tone pass: ${pass.reasons.join(", ")}`);
+  const corny = evaluateToneDelivery("funny", {
+    email_html: "Funny Word of the Day: Lock-tastic — a broker term",
+    email_subject: "A punny subject",
+  });
+  if (corny.passes) throw new Error("Expected funny tone failure for corny copy");
+
+  const edgy = evaluateToneDelivery("funny", {
+    email_html:
+      "Your pipeline isn't slow — it's ghosting you. Underwriting put the file in witness protection.",
+    email_subject: "Your conditions list called. It's not great.",
+  });
+  if (!edgy.passes) throw new Error(`Expected funny tone pass: ${edgy.reasons.join(", ")}`);
 });
 
-Deno.test("getEmailToneSystemPromptBlock includes override for funny", () => {
-  const block = getEmailToneSystemPromptBlock("funny", { funnyWord: "Pipeline-palooza" });
+Deno.test("hasEdgyHumorSignals and isCornyHumor", () => {
+  if (!hasEdgyHumorSignals("Underwriting circus. Real talk — this pipeline is a nightmare.")) {
+    throw new Error("Expected edgy signals");
+  }
+  if (isCornyHumor("Funny Word of the Day: Mortgage-mentum")) {
+    if (hasEdgyHumorSignals("Funny Word of the Day: Mortgage-mentum")) {
+      throw new Error("Corny copy should not pass edgy check");
+    }
+  }
+});
+
+Deno.test("getEmailToneSystemPromptBlock includes edgy override for funny", () => {
+  const block = getEmailToneSystemPromptBlock("funny");
   if (!block.includes("CRITICAL EMAIL TONE OVERRIDE")) {
     throw new Error("Expected system override block");
   }
-  if (!block.includes("Pipeline-palooza")) {
-    throw new Error("Expected explicit funny word in system block");
-  }
+  if (!block.includes("EDGY")) throw new Error("Expected edgy funny override");
+  if (/funny word/i.test(block)) throw new Error("System block must not require funny word");
 });
 
 Deno.test("getEmailToneImageRules returns tone-specific guidance", () => {

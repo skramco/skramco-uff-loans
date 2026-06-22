@@ -336,7 +336,7 @@ export const EMAIL_TONE_OPTIONS = [
     value: 'funny',
     label: 'Funny',
     description:
-      'Engaging humor across subject lines, body copy, LinkedIn, and imagery — a new random funny word and jokes each time you generate.',
+      'Edgy, shockingly funny broker humor — sharp deadpan and absurdist beats across subject, body, LinkedIn, and imagery. No corny puns.',
   },
   {
     value: 'urgency',

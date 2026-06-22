@@ -27,7 +27,7 @@ export const EMAIL_TONE_LABELS: Record<EmailTone, string> = {
 export const EMAIL_TONE_DESCRIPTIONS: Record<EmailTone, string> = {
   standard:
     "Professional broker intelligence with a motivational quote of the day in every email.",
-  funny: "Engaging humor across each campaign — random funny word, jokes, and playful copy every time you generate.",
+  funny: "Edgy, shockingly funny broker humor — sharp and bold, never corny puns or dad jokes.",
   urgency: "Action-oriented copy that motivates brokers to act now — without false rate claims.",
   real_time:
     "Grounded in today's mortgage headlines and market data with immediate, event-driven recommendations.",
@@ -206,15 +206,34 @@ EMAIL TONE: STANDARD (default professional broker intelligence)
 `.trim();
 }
 
-function funnyToneBlock(funnyWord: string): string {
+const FUNNY_TONE_BOUNDARIES = `
+FUNNY TONE — HARD LIMITS (non-negotiable):
+- NO profanity, slurs, sexual content, innuendo, or crude body humor.
+- NO mocking borrowers, veterans, protected classes, or individuals.
+- NO guaranteed-approval jokes or deceptive rate humor.
+- YES to edgy, deadpan, sarcastic, hyperbolic, absurdist mortgage-industry humor that makes brokers exhale-laugh.
+`.trim();
+
+const EDGY_FUNNY_STYLE = `
+FUNNY TONE — VOICE (edgy, not corny):
+- Write like a top producer with a dark sense of humor and zero patience for industry BS — shockingly funny, not "newsletter cute."
+- Prefer: savage deadpan, brutal honesty, unexpected analogies, hyperbolic broker-pain truth, absurdist scenarios, punchy one-liners, "you had to be there" underwriting horror stories played for laughs.
+- AVOID: dad jokes, forced puns, "funny word of the day," motivational-poster humor, office-lunch corny bits, emoji spam, and try-hard wordplay (no "loan-tastic", no groaners).
+- Subject lines should stop the scroll — bold, weird, or uncomfortably accurate (not clickbait).
+- email_html: open with a killer hook (one sharp line or mini-scene), then deliver real broker intelligence underneath the humor.
+- linkedin_post: same edge in the body — make peers tag their ops team.
+- canva_prompt: visual joke tied to the bit (absurd metaphor made literal) — not people laughing in a conference room.
+- Humor wraps the intelligence; still include numbered broker action steps.
+`.trim();
+
+function funnyToneBlock(): string {
   return `
-EMAIL TONE: FUNNY (engaging humor — still broker-facing and compliance-safe)
-- Make the reader smile or laugh across subject line, preview text, email body, LinkedIn, and imagery.
-- Include at least one mortgage-industry-appropriate joke, pun, or playful analogy (wholesale brokers are the audience).
-- REQUIRED — Funny Word for this campaign: "${funnyWord}" — define it playfully in the email and reference it in linkedin_post.
-- Subject lines can use wit or wordplay; avoid clickbait and forbidden compliance phrases.
-- canva_prompt: creative humorous visual metaphor from the email — absurd but professional (wizard in suit, chart-surfing broker, etc.); NOT generic office laughter.
-- Humor must NOT mock borrowers, veterans, or protected classes; no guaranteed-approval jokes.
+EMAIL TONE: FUNNY — EDGY WHOLESALE HUMOR
+${FUNNY_TONE_BOUNDARIES}
+
+${EDGY_FUNNY_STYLE}
+
+Tone reference (style only — do not copy verbatim): "Your pipeline isn't slow — it's ghosting you harder than a borrower who 'just needs to find their W-2 from 2019.'" / "Underwriting didn't decline the file. They put it in witness protection."
 `.trim();
 }
 
@@ -260,7 +279,7 @@ export function getEmailTonePromptBlock(
     case "standard":
       return standardToneBlock(getMotivationalQuoteOfTheDay(ref));
     case "funny":
-      return funnyToneBlock(resolveFunnyWord(opts.funnyWord));
+      return funnyToneBlock();
     case "urgency":
       return urgencyToneBlock();
     case "real_time": {
@@ -296,18 +315,19 @@ EMAIL TONE: STANDARD — voice/style requirements (compliance rules still apply)
   }
 
   if (tone === "funny") {
-    const funnyWord = resolveFunnyWord(opts.funnyWord);
     return `
-CRITICAL EMAIL TONE OVERRIDE: FUNNY — this OVERRIDES any "professional", "corporate", or "transactional" voice instructions above.
-The user explicitly selected FUNNY. Do NOT output dry, standard broker newsletter copy.
+CRITICAL EMAIL TONE OVERRIDE: FUNNY (EDGY) — this OVERRIDES any "professional", "corporate", or "transactional" voice instructions above.
+The user selected FUNNY. Do NOT output dry, standard, or corny broker newsletter copy.
+
+${FUNNY_TONE_BOUNDARIES}
 
 MANDATORY (verify before finishing JSON):
-1. email_subject — pun, joke hook, or playful wordplay (not a boring corporate subject line).
-2. email_html — open with a mortgage-industry joke OR a highlighted "Funny Word: ${funnyWord}" callout with a playful definition; include at least one additional pun or joke in the body.
-3. linkedin_post — at least one joke or pun in the body section (before the landing link).
-4. canva_prompt — vivid, humorous visual metaphor tied to the email joke (e.g. wizard in business suit, absurd pipeline metaphor) — NOT a generic office photo.
-5. Still include numbered broker action steps — humor wraps the intelligence, it does not replace it.
-6. Do NOT include a motivational quote of the day (that is for Standard tone only).
+1. email_subject — scroll-stopping, edgy, or uncomfortably accurate (NOT a pun, NOT corporate, NOT "Happy Tuesday").
+2. email_html — open with a sharp hook (deadpan one-liner, absurdist mini-scene, or savage broker-truth joke); at least one more edgy beat in the body. NO "funny word of the day" callouts. NO dad jokes.
+3. linkedin_post — same edge in the body section (before the landing link); should feel share-worthy, not safe.
+4. canva_prompt — literal visual punchline for the joke (absurd metaphor, unexpected scene) — NOT generic office laughter.
+5. Still include numbered broker action steps — the comedy sells the intelligence, not the other way around.
+6. Do NOT include a motivational quote of the day (Standard tone only).
 `.trim();
   }
 
@@ -373,14 +393,11 @@ export function evaluateToneDelivery(
   const reasons: string[] = [];
 
   if (tone === "funny") {
-    const funnyWord = resolveFunnyWord(opts.funnyWord).toLowerCase();
-    const humorSignals =
-      plain.includes(funnyWord) ||
-      /\b(pun|joke|lol|haha|humor|humour|playful|laugh|😄|😂|🤣)\b/.test(plain) ||
-      /funny word/i.test(combined);
-    if (!humorSignals) {
+    if (isCornyHumor(combined)) {
+      reasons.push("Funny tone must be edgy, not corny (no puns, funny-word callouts, or dad jokes)");
+    } else if (!hasEdgyHumorSignals(combined)) {
       reasons.push(
-        `Funny tone required but output lacks humor signals or funny word "${funnyWord}"`
+        "Funny tone required but output lacks edgy humor (deadpan, hyperbolic broker truth, absurdist beats — not dry corporate copy)"
       );
     }
   }
@@ -407,6 +424,31 @@ export function evaluateToneDelivery(
   return { passes: reasons.length === 0, reasons };
 }
 
+/** Detect edgy humor vs dry/corny copy for Funny tone QA. */
+export function hasEdgyHumorSignals(text: string): boolean {
+  const plain = text.replace(/<[^>]+>/g, " ").toLowerCase();
+
+  if (isCornyHumor(text)) return false;
+
+  const edgyPatterns = [
+    /\b(nightmare|chaos|disaster|brutal|savage|unhinged|circus|meltdown|dumpster fire|hostage|intervention|witness protection|restraining order|ghosting|medically induced|plot twist|confession|hot take|real talk)\b/i,
+    /\b(what could go wrong|as if|imagine if|spoiler:|not great|yikes|oof|look—you|let's be honest|i'll wait|respectfully)\b/i,
+    /\b(underwriting|conditions?|pipeline|vesting|lock desk).{0,40}(nightmare|circus|horror|hostage|meltdown|chaos)/i,
+    /\b(deadpan|absurd|uncomfortably accurate)\b/i,
+  ];
+
+  return edgyPatterns.some((p) => p.test(text));
+}
+
+export function isCornyHumor(text: string): boolean {
+  const plain = text.replace(/<[^>]+>/g, " ").toLowerCase();
+  return (
+    /\bfunny word of the day\b/i.test(text) ||
+    /\b(pun intended|dad joke|groaner|word of the day)\b/i.test(plain) ||
+    /\b(loan-tastic|mortgage-mentum|lock-tastic|pre-approva-lujah)\b/i.test(plain)
+  );
+}
+
 export function getToneRetryInstruction(
   tone: EmailTone,
   reasons: string[],
@@ -425,7 +467,7 @@ Regenerate the FULL JSON. ${toneBlock}
 export function getEmailToneImageRules(tone: EmailTone): string {
   switch (tone) {
     case "funny":
-      return "Visual mood: playful, surprising, content-specific — illustrate the campaign's joke or metaphor (e.g. wizard in business suit, broker taming paperwork dragon). Cinematic photorealism; make brokers smile. NOT generic office stock.";
+      return "Visual mood: edgy, absurdist, content-specific — literal visual punchline for the campaign's sharpest joke (unexpected scene, hyperbolic metaphor made real). Cinematic photorealism; make brokers snort-laugh. NOT generic office stock or people high-fiving.";
     case "urgency":
       return "Visual mood: dynamic forward momentum tied to the campaign topic — sprinting broker, countdown light on pipeline board, rocket launch metaphor — energetic but professional.";
     case "real_time":

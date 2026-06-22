@@ -29,6 +29,13 @@ const COMPLIANCE_KEYWORDS = [
   'credit score',
 ];
 
+const UNSUPPORTED_PRODUCT_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
+  { pattern: /\bconstruction\s+(?:loan|loans|financing|mortgage|mortgages|program|programs)\b/i, label: 'construction loan' },
+  { pattern: /\bconstruction[\s-]to[\s-]perm(?:anent)?\b/i, label: 'construction-to-perm' },
+  { pattern: /\bone[\s-]time[\s-]close\s+construction\b/i, label: 'one-time close construction' },
+  { pattern: /\bbuilder\s+(?:construction\s+)?(?:loan|loans|financing|program|programs)\b/i, label: 'builder construction loan' },
+];
+
 export function evaluateCompliance(content: {
   email_subject?: string;
   preview_text?: string;
@@ -72,6 +79,14 @@ export function evaluateCompliance(content: {
     if (combined.includes(kw.trim())) {
       flags.push(`compliance_keyword:${kw.trim()}`);
       score += 0.1;
+    }
+  }
+
+  for (const { pattern, label } of UNSUPPORTED_PRODUCT_PATTERNS) {
+    if (pattern.test(combined)) {
+      flags.push(`unsupported_product:${label}`);
+      violations.push(`UFF does not offer ${label} — remove or redirect to supported products`);
+      score += 0.35;
     }
   }
 

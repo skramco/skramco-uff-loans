@@ -22,6 +22,14 @@ describe('evaluateCompliance', () => {
     expect(result.flags.some((f) => f.includes('fha'))).toBe(true);
   });
 
+  it('flags construction loan mentions', () => {
+    const result = evaluateCompliance({
+      email_html: 'Our construction loan program for builders.',
+    });
+    expect(result.violations.some((v) => v.includes('construction loan'))).toBe(true);
+    expect(result.flags.some((f) => f.startsWith('unsupported_product:'))).toBe(true);
+  });
+
   it('raises score for consumer-facing content', () => {
     const result = evaluateCompliance({
       email_text: 'Hello brokers',

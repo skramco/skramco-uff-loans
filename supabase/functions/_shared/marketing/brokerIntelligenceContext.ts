@@ -29,6 +29,7 @@ SUCCESS CRITERIA (self-check):
 CONTENT TO AVOID:
 - Product ads, generic rate messaging, "best/lowest/guaranteed/fastest/number one" claims
 - Surface product brochures, empty bullet features, hype without structure
+- Construction loans or construction-to-perm — UFF does not offer them; never recommend or structure construction financing
 
 CONTENT TO DELIVER:
 - Deal structuring, loan rescue paths, referral strategies, product deep-dives
@@ -45,6 +46,7 @@ EDUCATIONAL FRAMEWORK — include a practical mix in email_html:
 UFF WHOLESALE POSITIONING (supported claims only):
 - Competitive/aggressive pricing, strong product breadth, execution, scenario desk support, operational consistency
 - Products: Conventional, FHA, VA, USDA, Non-QM (DSCR, bank statement, asset depletion, interest-only, foreign national, jumbo), streamline expertise
+- Does NOT offer: construction loans, construction-to-perm, one-time-close construction, or builder construction financing
 - Technology: PRO Portal for origination workflow only (see separate PRO Portal facts if provided)
 - Do NOT claim: best rates, lowest rates, guaranteed approval, fastest lender, #1 lender
 
@@ -58,6 +60,8 @@ PRODUCT FAMILIES (reference accurately by campaign topic):
 - VA: purchase (veteran, PCS, relocation, entitlement); IRRRL retention; rescue from conventional/FHA; veteran/military referral channels
 - Non-QM: DSCR investors; bank statement self-employed; asset depletion retirees/HNW; interest-only cash flow; foreign national; jumbo non-QM executives
 - USDA: rural/suburban eligibility where applicable
+
+NOT OFFERED: construction loans, construction-to-perm, OTC construction, ground-up/spec construction financing, builder construction programs.
 `.trim();
 
 const CAMPAIGN_TYPE_GUIDANCE: Partial<Record<CampaignType, string>> = {
@@ -65,7 +69,7 @@ const CAMPAIGN_TYPE_GUIDANCE: Partial<Record<CampaignType, string>> = {
 
   scenario_desk: `SCENARIO DESK campaign. Present one realistic borrower file (complex income, job change, investment property, divorce, retirement, credit event, etc.). Walk through how an experienced scenario desk would analyze — options, risks, doc strategy. No fabricated loan numbers.`,
 
-  broker_business_growth_tip: `BROKER GROWTH campaign. Business development — realtor/CPA/FA/builder/investor/veteran niche/self-employed mining. Concrete weekly actions to create pipeline.`,
+  broker_business_growth_tip: `BROKER GROWTH campaign. Business development — realtor/CPA/FA/builder (referral partner for completed-home purchase, NOT construction loans)/investor/veteran niche/self-employed mining. Concrete weekly actions to create pipeline.`,
 
   broker_growth: `BROKER GROWTH campaign (same as business development). Referral partnerships and niche targeting with implementable steps.`,
 
@@ -188,4 +192,5 @@ export function evaluateEducationalValue(content: {
 export const EDUCATIONAL_RETRY_INSTRUCTION = `
 REJECTED DRAFT: Prior output failed broker intelligence check (too generic or not actionable).
 Regenerate with: specific scenario, numbered broker action steps, structuring/rescue/identification angle, zero marketing fluff.
+Never mention construction loans or construction-to-perm — UFF does not offer them.
 `.trim();

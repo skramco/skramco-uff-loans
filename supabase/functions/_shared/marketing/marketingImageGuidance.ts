@@ -6,8 +6,8 @@ HERO IMAGE BRIEF (canva_prompt field) — this text is sent directly to OpenAI i
 - Be specific and cinematic: subject, setting, action, mood, and one memorable creative twist tied to the email content.
 - Good examples: "Mortgage wizard in a tailored business suit conjuring organized loan files in a sunlit loft"; "Broker captain steering a ship through waves made of rate charts"; "Giant golden key unlocking a craftsman home at sunrise"; "Superhero broker rescuing a stuck loan file from a paperwork tornado — still corporate attire".
 - Bad examples: "People in an office laughing", "Handshake in conference room", "Generic skyline" (unless the email is literally about those).
-- Professional wholesale mortgage audience — clever, PG, broker-appropriate. No vulgarity, politics, grotesque humor, or meme-tier sloppiness.
-- Funny tone: push absurd professional metaphors and visual jokes that make brokers smile.
+- Professional wholesale mortgage audience — sharp, PG, broker-appropriate. No vulgarity, sexual content, politics, grotesque humor, or meme-tier sloppiness.
+- Funny tone: edgy absurdist visual punchlines tied to the joke — make brokers snort-laugh, not groan at puns.
 - Always describe where a subtle hidden red #dc2626 accent object appears (pen, mug, tie, notebook corner, etc.).
 `.trim();
 

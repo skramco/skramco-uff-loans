@@ -44,7 +44,6 @@ import {
   getEmailToneSystemPromptBlock,
   getToneRetryInstruction,
   parseEmailTone,
-  pickRandomFunnyWord,
   type EmailTone,
   type EmailTonePromptOptions,
 } from "./emailToneContext.ts";
@@ -86,7 +85,6 @@ export interface GenerateOptions {
   marketDataSummary?: string | null;
   realTimeContext?: string | null;
   emailTone?: EmailTone;
-  funnyWord?: string;
 }
 
 function parseGeneratedJson(raw: string): Record<string, unknown> {
@@ -152,7 +150,6 @@ export function buildUserPrompt(options: GenerateOptions): string {
   parts.push(
     `\n${getEmailTonePromptBlock(tone, {
       realTimeContext: options.realTimeContext ?? undefined,
-      funnyWord: options.funnyWord,
     })}`
   );
 
@@ -200,9 +197,7 @@ export async function generateCampaignContent(
 ): Promise<GeneratedCampaignContent> {
   const template = options.template ?? (await repo.getTemplateByType(options.campaignType));
   const emailTone = options.emailTone ?? DEFAULT_EMAIL_TONE;
-  const funnyWord =
-    emailTone === "funny" ? (options.funnyWord ?? pickRandomFunnyWord()) : undefined;
-  const toneOpts: EmailTonePromptOptions = { funnyWord };
+  const toneOpts: EmailTonePromptOptions = {};
   const systemPrompt = buildSystemPrompt(template?.prompt_system, emailTone, toneOpts);
 
   let marketDataSummary: string | null = null;
@@ -231,7 +226,6 @@ export async function generateCampaignContent(
     marketDataSummary,
     realTimeContext,
     emailTone,
-    funnyWord,
   });
   let parsed: Record<string, unknown> = {};
 
@@ -244,7 +238,7 @@ export async function generateCampaignContent(
       email_text: draft.email_text,
       internal_summary: draft.internal_summary,
     });
-    const toneCheck = evaluateToneDelivery(emailTone, draft, { funnyWord });
+    const toneCheck = evaluateToneDelivery(emailTone, draft);
     if ((edu.passes && toneCheck.passes) || attempt === 2) {
       if (!toneCheck.passes) {
         console.warn("Tone check failed after retries:", toneCheck.reasons, "tone:", emailTone);
@@ -302,8 +296,6 @@ export async function generateCampaignContent(
 
   const approvalSettings = await loadApprovalSettings((k) => repo.getSetting(k));
   campaign.approval_required = computeApprovalRequired(campaign, approvalSettings);
-
-  if (funnyWord) campaign.funny_word = funnyWord;
 
   return campaign;
 }
@@ -386,8 +378,7 @@ export async function regenerateField(
   campaignType: CampaignType,
   field: "subject" | "linkedin" | "canva_prompt" | "email_html",
   currentContent: Partial<GeneratedCampaignContent>,
-  emailToneOverride?: EmailTone,
-  funnyWordOverride?: string
+  emailToneOverride?: EmailTone
 ): Promise<Partial<GeneratedCampaignContent>> {
   const fieldMap: Record<string, string> = {
     subject: "Regenerate only the email_subject and preview_text fields as JSON: { email_subject, preview_text }",
@@ -407,11 +398,7 @@ export async function regenerateField(
       toneContext = undefined;
     }
   }
-  const funnyWord =
-    emailTone === "funny"
-      ? funnyWordOverride ?? currentContent.funny_word ?? pickRandomFunnyWord()
-      : undefined;
-  const toneOpts: EmailTonePromptOptions = { funnyWord, realTimeContext: toneContext };
+  const toneOpts: EmailTonePromptOptions = { realTimeContext: toneContext };
   const systemPrompt = buildSystemPrompt(template?.prompt_system, emailTone, toneOpts);
 
   let userPrompt = `${fieldMap[field]}\n\nCurrent campaign context:\n${JSON.stringify(currentContent, null, 2)}`;

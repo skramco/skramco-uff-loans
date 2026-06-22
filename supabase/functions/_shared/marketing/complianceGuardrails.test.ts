@@ -7,6 +7,18 @@ Deno.test("compliance flags superlatives", () => {
   }
 });
 
+Deno.test("compliance flags unsupported construction loan products", () => {
+  const result = evaluateCompliance({
+    email_html: "UFF construction loan programs help builders.",
+  });
+  if (!result.violations.some((v) => v.includes("construction loan"))) {
+    throw new Error("Expected construction loan violation");
+  }
+  if (!result.flags.some((f) => f.startsWith("unsupported_product:"))) {
+    throw new Error("Expected unsupported_product flag");
+  }
+});
+
 Deno.test("PII strip removes email", () => {
   const out = stripPIIFromText("Email broker@test.com for info");
   if (!out.includes("[REDACTED_EMAIL]")) throw new Error("Email not redacted");
