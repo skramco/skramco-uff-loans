@@ -86,6 +86,8 @@ export async function runCampaignGeneration(
     emailTone,
   });
 
+  const funnyWord = rawContent.funny_word;
+
   // LinkedIn: keep {{LANDING_PAGE_URL}} until approval; PRO Portal URL is formatted at bottom via linkedinPostFormat.
 
   const campaignId = crypto.randomUUID();
@@ -117,6 +119,7 @@ export async function runCampaignGeneration(
     metadata: {
       generation: { at: new Date().toISOString(), useVestaInsights: !!opts.useVestaInsights },
       email_tone: emailTone,
+      funny_word: funnyWord ?? null,
       call_to_action: content.call_to_action,
       email_body_fragment: rawContent.email_html,
       email_text_fragment: rawContent.email_text,

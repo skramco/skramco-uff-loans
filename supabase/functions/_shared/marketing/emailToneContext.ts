@@ -27,7 +27,7 @@ export const EMAIL_TONE_LABELS: Record<EmailTone, string> = {
 export const EMAIL_TONE_DESCRIPTIONS: Record<EmailTone, string> = {
   standard:
     "Professional broker intelligence with a motivational quote of the day in every email.",
-  funny: "Engaging, lighthearted copy with humor, jokes, and a funny word of the day.",
+  funny: "Engaging humor across each campaign — random funny word, jokes, and playful copy every time you generate.",
   urgency: "Action-oriented copy that motivates brokers to act now — without false rate claims.",
   real_time:
     "Grounded in today's mortgage headlines and market data with immediate, event-driven recommendations.",
@@ -137,6 +137,17 @@ export function getFunnyWordOfTheDay(ref: Date = new Date()): string {
   return FUNNY_WORDS_OF_THE_DAY[index];
 }
 
+/** Random funny word for each campaign generation (not tied to calendar day). */
+export function pickRandomFunnyWord(): string {
+  const bytes = new Uint32Array(1);
+  crypto.getRandomValues(bytes);
+  return FUNNY_WORDS_OF_THE_DAY[bytes[0] % FUNNY_WORDS_OF_THE_DAY.length];
+}
+
+function resolveFunnyWord(explicit: string | undefined): string {
+  return explicit?.trim() ? explicit.trim() : pickRandomFunnyWord();
+}
+
 /** Fetch today's mortgage headlines + FRED snapshot for Real-Time tone. */
 export async function fetchRealTimeContext(ref: Date = new Date()): Promise<string> {
   const dateLabel = getTodayBriefingDateLabel(ref);
@@ -200,7 +211,7 @@ function funnyToneBlock(funnyWord: string): string {
 EMAIL TONE: FUNNY (engaging humor — still broker-facing and compliance-safe)
 - Make the reader smile or laugh across subject line, preview text, email body, LinkedIn, and imagery.
 - Include at least one mortgage-industry-appropriate joke, pun, or playful analogy (wholesale brokers are the audience).
-- REQUIRED — Funny Word of the Day: "${funnyWord}" — define it playfully in the email and reference it in linkedin_post.
+- REQUIRED — Funny Word for this campaign: "${funnyWord}" — define it playfully in the email and reference it in linkedin_post.
 - Subject lines can use wit or wordplay; avoid clickbait and forbidden compliance phrases.
 - canva_prompt: lighter, cheerful visual mood (still professional — no memes, no clown imagery, no text overlays).
 - Humor must NOT mock borrowers, veterans, or protected classes; no guaranteed-approval jokes.
@@ -234,6 +245,8 @@ EMAIL TONE: REAL-TIME (today's events drive every recommendation)
 export interface EmailTonePromptOptions {
   ref?: Date;
   realTimeContext?: string;
+  /** Picked once per campaign — keeps prompts and validation aligned. */
+  funnyWord?: string;
 }
 
 /** Prompt block injected into campaign generation when a tone is active. */
@@ -247,7 +260,7 @@ export function getEmailTonePromptBlock(
     case "standard":
       return standardToneBlock(getMotivationalQuoteOfTheDay(ref));
     case "funny":
-      return funnyToneBlock(getFunnyWordOfTheDay(ref));
+      return funnyToneBlock(resolveFunnyWord(opts.funnyWord));
     case "urgency":
       return urgencyToneBlock();
     case "real_time": {
@@ -283,14 +296,14 @@ EMAIL TONE: STANDARD — voice/style requirements (compliance rules still apply)
   }
 
   if (tone === "funny") {
-    const funnyWord = getFunnyWordOfTheDay(ref);
+    const funnyWord = resolveFunnyWord(opts.funnyWord);
     return `
 CRITICAL EMAIL TONE OVERRIDE: FUNNY — this OVERRIDES any "professional", "corporate", or "transactional" voice instructions above.
 The user explicitly selected FUNNY. Do NOT output dry, standard broker newsletter copy.
 
 MANDATORY (verify before finishing JSON):
 1. email_subject — pun, joke hook, or playful wordplay (not a boring corporate subject line).
-2. email_html — open with a mortgage-industry joke OR a highlighted "Funny Word of the Day: ${funnyWord}" callout with a playful definition; include at least one additional pun or joke in the body.
+2. email_html — open with a mortgage-industry joke OR a highlighted "Funny Word: ${funnyWord}" callout with a playful definition; include at least one additional pun or joke in the body.
 3. linkedin_post — at least one joke or pun in the body section (before the landing link).
 4. canva_prompt — cheerful, slightly playful visual mood (still photorealistic; no memes/clowns).
 5. Still include numbered broker action steps — humor wraps the intelligence, it does not replace it.
@@ -326,6 +339,11 @@ MANDATORY:
 `.trim();
 }
 
+export interface EvaluateToneOptions {
+  ref?: Date;
+  funnyWord?: string;
+}
+
 export function evaluateToneDelivery(
   tone: EmailTone,
   content: {
@@ -336,10 +354,11 @@ export function evaluateToneDelivery(
     linkedin_post?: string;
     internal_summary?: string;
   },
-  ref: Date = new Date()
+  opts: EvaluateToneOptions = {}
 ): { passes: boolean; reasons: string[] } {
   if (tone === "standard") return { passes: true, reasons: [] };
 
+  const ref = opts.ref ?? new Date();
   const combined = [
     content.email_subject,
     content.preview_text,
@@ -354,14 +373,14 @@ export function evaluateToneDelivery(
   const reasons: string[] = [];
 
   if (tone === "funny") {
-    const funnyWord = getFunnyWordOfTheDay(ref).toLowerCase();
+    const funnyWord = resolveFunnyWord(opts.funnyWord).toLowerCase();
     const humorSignals =
       plain.includes(funnyWord) ||
       /\b(pun|joke|lol|haha|humor|humour|playful|laugh|😄|😂|🤣)\b/.test(plain) ||
-      /funny word of the day/i.test(combined);
+      /funny word/i.test(combined);
     if (!humorSignals) {
       reasons.push(
-        `Funny tone required but output lacks humor signals or Funny Word of the Day "${funnyWord}"`
+        `Funny tone required but output lacks humor signals or funny word "${funnyWord}"`
       );
     }
   }
@@ -388,11 +407,12 @@ export function evaluateToneDelivery(
   return { passes: reasons.length === 0, reasons };
 }
 
-export function getToneRetryInstruction(tone: EmailTone, reasons: string[], ref: Date = new Date()): string {
-  const toneBlock =
-    tone === "real_time"
-      ? getEmailToneSystemPromptBlock(tone)
-      : getEmailToneSystemPromptBlock(tone, { ref });
+export function getToneRetryInstruction(
+  tone: EmailTone,
+  reasons: string[],
+  opts: EmailTonePromptOptions = {}
+): string {
+  const toneBlock = getEmailToneSystemPromptBlock(tone, opts);
   return `
 REJECTED DRAFT: Prior output failed the selected EMAIL TONE check (${tone}).
 Failure reasons: ${reasons.join("; ")}

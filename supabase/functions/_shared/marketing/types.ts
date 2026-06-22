@@ -61,6 +61,8 @@ export interface GeneratedCampaignContent {
   approval_required: boolean;
   consumer_facing?: boolean;
   uses_vesta_insights?: boolean;
+  /** Set when email tone is funny — random per generation. */
+  funny_word?: string;
 }
 
 export interface MarketingCampaignRow {

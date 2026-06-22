@@ -242,6 +242,12 @@ export default function CampaignDetail({ password }: Props) {
                   Tone:{' '}
                   {EMAIL_TONE_OPTIONS.find((o) => o.value === parseEmailTone(campaign.metadata.email_tone))
                     ?.label ?? String(campaign.metadata.email_tone)}
+                  {typeof campaign.metadata?.funny_word === 'string' && (
+                    <span className="normal-case">
+                      {' '}
+                      (Word: {String(campaign.metadata.funny_word)})
+                    </span>
+                  )}
                 </>
               )}
             </p>

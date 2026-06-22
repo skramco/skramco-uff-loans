@@ -43,7 +43,9 @@ import {
   getEmailToneSystemPromptBlock,
   getToneRetryInstruction,
   parseEmailTone,
+  pickRandomFunnyWord,
   type EmailTone,
+  type EmailTonePromptOptions,
 } from "./emailToneContext.ts";
 
 export { callOpenAI, DailyMarketBriefingUnavailableError };
@@ -61,13 +63,14 @@ const PRODUCT_INTELLIGENCE_TYPES = new Set<CampaignType>([
 
 export function buildSystemPrompt(
   templateSystem?: string | null,
-  emailTone: EmailTone = DEFAULT_EMAIL_TONE
+  emailTone: EmailTone = DEFAULT_EMAIL_TONE,
+  toneOpts: EmailTonePromptOptions = {}
 ): string {
   const parts = [BROKER_GROWTH_ENGINE_PROMPT, BRAND_SYSTEM_PROMPT];
   if (templateSystem?.trim()) {
     parts.push(`Additional template rules:\n${templateSystem.trim()}`);
   }
-  parts.push(getEmailToneSystemPromptBlock(emailTone));
+  parts.push(getEmailToneSystemPromptBlock(emailTone, toneOpts));
   return parts.join("\n\n");
 }
 
@@ -82,6 +85,7 @@ export interface GenerateOptions {
   marketDataSummary?: string | null;
   realTimeContext?: string | null;
   emailTone?: EmailTone;
+  funnyWord?: string;
 }
 
 function parseGeneratedJson(raw: string): Record<string, unknown> {
@@ -144,7 +148,10 @@ export function buildUserPrompt(options: GenerateOptions): string {
 
   const tone = options.emailTone ?? DEFAULT_EMAIL_TONE;
   parts.push(
-    `\n${getEmailTonePromptBlock(tone, { realTimeContext: options.realTimeContext ?? undefined })}`
+    `\n${getEmailTonePromptBlock(tone, {
+      realTimeContext: options.realTimeContext ?? undefined,
+      funnyWord: options.funnyWord,
+    })}`
   );
 
   parts.push("\nReturn JSON only.");
@@ -191,7 +198,10 @@ export async function generateCampaignContent(
 ): Promise<GeneratedCampaignContent> {
   const template = options.template ?? (await repo.getTemplateByType(options.campaignType));
   const emailTone = options.emailTone ?? DEFAULT_EMAIL_TONE;
-  const systemPrompt = buildSystemPrompt(template?.prompt_system, emailTone);
+  const funnyWord =
+    emailTone === "funny" ? (options.funnyWord ?? pickRandomFunnyWord()) : undefined;
+  const toneOpts: EmailTonePromptOptions = { funnyWord };
+  const systemPrompt = buildSystemPrompt(template?.prompt_system, emailTone, toneOpts);
 
   let marketDataSummary: string | null = null;
   if (options.campaignType === DAILY_BRIEFING_CAMPAIGN_TYPE) {
@@ -219,6 +229,7 @@ export async function generateCampaignContent(
     marketDataSummary,
     realTimeContext,
     emailTone,
+    funnyWord,
   });
   let parsed: Record<string, unknown> = {};
 
@@ -231,7 +242,7 @@ export async function generateCampaignContent(
       email_text: draft.email_text,
       internal_summary: draft.internal_summary,
     });
-    const toneCheck = evaluateToneDelivery(emailTone, draft);
+    const toneCheck = evaluateToneDelivery(emailTone, draft, { funnyWord });
     if ((edu.passes && toneCheck.passes) || attempt === 2) {
       if (!toneCheck.passes) {
         console.warn("Tone check failed after retries:", toneCheck.reasons, "tone:", emailTone);
@@ -244,7 +255,7 @@ export async function generateCampaignContent(
       continue;
     }
     console.warn("Tone check failed, regenerating:", toneCheck.reasons, "tone:", emailTone);
-    userPrompt = `${userPrompt}\n\n${getToneRetryInstruction(emailTone, toneCheck.reasons)}`;
+    userPrompt = `${userPrompt}\n\n${getToneRetryInstruction(emailTone, toneCheck.reasons, toneOpts)}`;
   }
 
   const defaultList =
@@ -289,6 +300,8 @@ export async function generateCampaignContent(
 
   const approvalSettings = await loadApprovalSettings((k) => repo.getSetting(k));
   campaign.approval_required = computeApprovalRequired(campaign, approvalSettings);
+
+  if (funnyWord) campaign.funny_word = funnyWord;
 
   return campaign;
 }
@@ -371,7 +384,8 @@ export async function regenerateField(
   campaignType: CampaignType,
   field: "subject" | "linkedin" | "canva_prompt" | "email_html",
   currentContent: Partial<GeneratedCampaignContent>,
-  emailToneOverride?: EmailTone
+  emailToneOverride?: EmailTone,
+  funnyWordOverride?: string
 ): Promise<Partial<GeneratedCampaignContent>> {
   const fieldMap: Record<string, string> = {
     subject: "Regenerate only the email_subject and preview_text fields as JSON: { email_subject, preview_text }",
@@ -383,7 +397,6 @@ export async function regenerateField(
 
   const template = await repo.getTemplateByType(campaignType);
   const emailTone = emailToneOverride ?? DEFAULT_EMAIL_TONE;
-  const systemPrompt = buildSystemPrompt(template?.prompt_system, emailTone);
   let toneContext: string | undefined;
   if (emailTone === "real_time") {
     try {
@@ -392,9 +405,15 @@ export async function regenerateField(
       toneContext = undefined;
     }
   }
+  const funnyWord =
+    emailTone === "funny"
+      ? funnyWordOverride ?? currentContent.funny_word ?? pickRandomFunnyWord()
+      : undefined;
+  const toneOpts: EmailTonePromptOptions = { funnyWord, realTimeContext: toneContext };
+  const systemPrompt = buildSystemPrompt(template?.prompt_system, emailTone, toneOpts);
 
   let userPrompt = `${fieldMap[field]}\n\nCurrent campaign context:\n${JSON.stringify(currentContent, null, 2)}`;
-  userPrompt += `\n\n${getEmailTonePromptBlock(emailTone, { realTimeContext: toneContext })}`;
+  userPrompt += `\n\n${getEmailTonePromptBlock(emailTone, toneOpts)}`;
   if (field === "linkedin") {
     userPrompt += `\n\n${getLinkedInHashtagHints(campaignType)}`;
   }
