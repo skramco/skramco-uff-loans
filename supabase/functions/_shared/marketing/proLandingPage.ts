@@ -4,7 +4,8 @@
  */
 
 import { callOpenAI } from "./openaiClient.ts";
-import { PRO_PORTAL_PRODUCT_CONTEXT } from "./proPortalContext.ts";
+import { formatLinkedInCaption } from "./linkedinPostFormat.ts";
+import { PRO_PORTAL_PRODUCT_CONTEXT, PRO_PORTAL_PUBLIC_PAGE_URL } from "./proPortalContext.ts";
 import type { GeneratedCampaignContent } from "./types.ts";
 
 export const LANDING_PAGE_PLACEHOLDER = "{{LANDING_PAGE_URL}}";
@@ -140,8 +141,9 @@ async function generateLandingPageJson(
   content: GeneratedCampaignContent
 ): Promise<CampaignLandingPageJson> {
   const slug = slugifyCampaignTitle(content.title, campaignId);
-  const systemPrompt = `You write broker-facing landing page content for United Fidelity Funding (UFF) wholesale mortgage.
-Return JSON only. Content must be practical, specific, and valuable for mortgage brokers — not generic marketing fluff.
+  const systemPrompt = `You write broker intelligence landing pages for United Fidelity Funding (UFF) wholesale mortgage.
+Return JSON only. Expand the email with actionable structuring, identification, documentation, and numbered broker action steps — not product ads or generic marketing.
+Final check: will a broker identify, structure, rescue, or close a loan after reading this?
 Do not promise specific rates or guaranteed approvals. NMLS 34381. Audience: wholesale brokers.
 PRO Portal is loan origination only — do not describe marketing, testimonial, or CRM features on the landing page.
 
@@ -229,13 +231,16 @@ export function rewritePlainTextLinksForLanding(text: string, landingUrl: string
   return out;
 }
 
-/** Ensure LinkedIn caption includes the campaign landing page URL (single CTA link). */
-export function rewriteLinkedInPostForLanding(text: string, landingUrl: string): string {
-  let out = text.replaceAll(LANDING_PAGE_PLACEHOLDER, landingUrl).trim();
-  if (!out.includes(landingUrl)) {
-    out = `${out}\n\n${landingUrl}`;
-  }
-  return out;
+/** Apply landing + PRO Portal URLs with standard caption section order. */
+export function rewriteLinkedInPostForLanding(
+  text: string,
+  landingUrl: string,
+  proPortalUrl?: string
+): string {
+  return formatLinkedInCaption(text, {
+    landingUrl,
+    proPortalUrl: proPortalUrl ?? PRO_PORTAL_PUBLIC_PAGE_URL,
+  });
 }
 
 export async function createAndPublishProLandingPage(

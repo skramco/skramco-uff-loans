@@ -71,6 +71,11 @@ describe('canSendCampaign', () => {
     const result = canSendCampaign('draft', false, 'operational_tip', ['operational_tip']);
     expect(result.allowed).toBe(true);
   });
+
+  it('allows resend from sent or failed status', () => {
+    expect(canSendCampaign('sent', true, 'daily_rate_update', []).allowed).toBe(true);
+    expect(canSendCampaign('failed', true, 'fha_product_spotlight', []).allowed).toBe(true);
+  });
 });
 
 describe('buildIdempotencyKey', () => {

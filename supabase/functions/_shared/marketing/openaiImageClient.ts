@@ -1,6 +1,7 @@
 /** OpenAI image generation for marketing campaigns (GPT Image + DALL-E). */
 
 import { injectImageIntoHtml } from "./uffEmailTemplate.ts";
+import { getEmailToneImageRules, parseEmailTone } from "./emailToneContext.ts";
 
 export interface OpenAIImageResult {
   /** Ephemeral hosted URL (DALL-E with response_format=url). */
@@ -163,10 +164,14 @@ export function buildImagePrompt(campaign: {
 
   const topic = topicParts[0] ?? "UFF wholesale broker marketing";
 
+  const tone = parseEmailTone(campaign.metadata?.email_tone);
+  const toneLine = getEmailToneImageRules(tone);
+
   return [
     `Wide hero photograph for United Fidelity Funding (UFF) PRO Portal marketing email and LinkedIn.`,
     `Campaign topic: ${topic}.`,
     styleLine,
+    toneLine,
   ].join(" ");
 }
 

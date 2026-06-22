@@ -19,6 +19,7 @@ import {
   refreshCanvaToken,
 } from "../_shared/marketing/canvaClient.ts";
 import { regenerateField } from "../_shared/marketing/campaignGenerator.ts";
+import { parseEmailTone } from "../_shared/marketing/emailToneContext.ts";
 import {
   isLinkedInAutoPostEnabled,
   publishOrganizationPost,
@@ -119,6 +120,7 @@ Deno.serve(async (req: Request) => {
           audienceListId: body.audienceListId,
           useVestaInsights: body.useVestaInsights === true,
           actorType: "user",
+          emailTone: body.emailTone ? parseEmailTone(body.emailTone) : undefined,
         });
 
         const campaign = await repo.getCampaign(result.campaignId);
@@ -137,6 +139,7 @@ Deno.serve(async (req: Request) => {
         const result = await runSingleBrokerGrowthTipCampaign(supabase, {
           actorType: "user",
           excludeTitles,
+          emailTone: body.emailTone ? parseEmailTone(body.emailTone) : undefined,
         });
         const campaign = await repo.getCampaign(result.campaignId);
         return jsonResponse({
@@ -211,7 +214,8 @@ Deno.serve(async (req: Request) => {
             internal_summary: campaign.internal_summary ?? undefined,
             landing_page_url:
               typeof meta.landing_page_url === "string" ? meta.landing_page_url : undefined,
-          }
+          },
+          parseEmailTone(meta.email_tone)
         );
 
         const updateMap: Record<string, string> = {

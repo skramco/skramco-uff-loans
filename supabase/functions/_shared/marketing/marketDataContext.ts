@@ -1,7 +1,14 @@
 /**
- * FRED market data for daily rate / market commentary campaigns.
- * Grounds AI copy in real, dated economic observations — not invented commentary.
+ * FRED market data + same-day RSS headlines for market campaigns.
+ * daily_rate_update requires today's RSS headlines (see mortgageNewsRssContext.ts).
  */
+import {
+  DailyMarketBriefingUnavailableError,
+  DAILY_MARKET_BRIEFING_PROMPT_RULES,
+  fetchTodayMortgageHeadlines,
+  formatTodayHeadlinesForPrompt,
+  getEtYmd,
+} from "./mortgageNewsRssContext.ts";
 
 const MARKET_SERIES = [
   { key: "MORTGAGE30US", label: "30-Year Fixed Mortgage Rate (Freddie Mac PMMS)" },
@@ -15,11 +22,14 @@ const MARKET_SERIES = [
   { key: "MSPUS", label: "Median Sales Price of Houses Sold" },
 ] as const;
 
+/** FRED-backed campaigns (not the same-day RSS daily briefing). */
 export const MARKET_DATA_CAMPAIGN_TYPES = new Set([
-  "daily_rate_update",
   "market_commentary",
+  "market_intelligence",
   "weekly_broker_newsletter",
 ]);
+
+export const DAILY_BRIEFING_CAMPAIGN_TYPE = "daily_rate_update" as const;
 
 interface FredObservation {
   date: string;
@@ -92,3 +102,36 @@ MARKET / RATE CAMPAIGN RULES:
 - Do NOT fabricate Fed decisions, jobs report numbers, or mortgage rate levels — use only provided FRED figures with observation dates.
 - One practical broker action item is fine; CTA can point to PRO Portal for pricing/scenarios, not for "market alerts."
 `.trim();
+
+/** Same-day RSS required; supplements with FRED when available. Throws if no headlines today. */
+export async function fetchTodayMarketBriefing(): Promise<string> {
+  const todayEt = getEtYmd();
+  const headlines = await fetchTodayMortgageHeadlines();
+  if (!headlines.length) {
+    throw new DailyMarketBriefingUnavailableError(
+      `No mortgage market headlines published today (${todayEt} ET) in configured RSS feeds. Daily briefing not generated.`
+    );
+  }
+
+  const parts: string[] = [formatTodayHeadlinesForPrompt(headlines, todayEt)];
+
+  try {
+    const fred = await fetchMarketDataSummary();
+    if (fred) {
+      parts.push("");
+      parts.push(
+        "SUPPLEMENTAL FRED DATA (use only with observation dates — not a substitute for today's headlines):"
+      );
+      parts.push(fred);
+    }
+  } catch (e) {
+    console.warn("FRED supplement fetch failed:", e);
+  }
+
+  parts.push("");
+  parts.push(`Briefing assembled: ${new Date().toISOString()} (${todayEt} ET)`);
+
+  return parts.join("\n");
+}
+
+export { DailyMarketBriefingUnavailableError, DAILY_MARKET_BRIEFING_PROMPT_RULES };

@@ -18,13 +18,13 @@ function parseJsonObject(raw: string): Record<string, unknown> {
   return JSON.parse(jsonMatch[0]) as Record<string, unknown>;
 }
 
-const RESEARCH_SYSTEM_PROMPT = `You are a mortgage wholesale marketing strategist for United Fidelity Funding (UFF).
+const RESEARCH_SYSTEM_PROMPT = `You are a Broker Growth Engine strategist for United Fidelity Funding (UFF) wholesale.
 
-Research innovative, practical ways independent mortgage brokers and LOs grow purchase and refi business in 2025–2026. Focus on strategies that are:
-- Ethical and compliance-safe (no bait-and-switch, no guaranteed approval/rates)
-- Actionable for wholesale brokers working with a lender like UFF
-- Mix of digital, referral, community, and operational tactics
-- Not generic ("work harder") — specific, modern playbooks
+Research tactics that help brokers identify, structure, rescue, submit, close, or generate additional loans — not generic lender marketing.
+Focus on: referral partnerships, niche borrower mining, deal rescue paths, product/scenario angles, submission quality.
+Avoid: rate ads, "best/lowest/guaranteed" language, empty motivational fluff.
+Each tip must include concrete actionSteps a broker can execute this week.
+Compliance-safe: no guaranteed approval/rates; PRO Portal only for origination workflow (pricing, submit, pipeline).
 
 Return JSON only:
 {

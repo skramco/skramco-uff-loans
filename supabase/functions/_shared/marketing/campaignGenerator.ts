@@ -1,3 +1,10 @@
+import {
+  BROKER_GROWTH_ENGINE_PROMPT,
+  EDUCATIONAL_RETRY_INSTRUCTION,
+  evaluateEducationalValue,
+  getCampaignTypeIntelligence,
+  UFF_WHOLESALE_PRODUCT_MENU,
+} from "./brokerIntelligenceContext.ts";
 import { BRAND_SYSTEM_PROMPT, evaluateCompliance } from "./complianceGuardrails.ts";
 import { computeApprovalRequired, loadApprovalSettings } from "./approvalRules.ts";
 import { parseListId, resolveDefaultListId } from "./activeCampaignClient.ts";
@@ -13,13 +20,49 @@ import {
 import type { BrokerGrowthTip } from "./brokerGrowthTips.ts";
 import { callOpenAI } from "./openaiClient.ts";
 import {
+  DAILY_BRIEFING_CAMPAIGN_TYPE,
+  DAILY_MARKET_BRIEFING_PROMPT_RULES,
+  DailyMarketBriefingUnavailableError,
   MARKET_COMMENTARY_PROMPT_RULES,
   MARKET_DATA_CAMPAIGN_TYPES,
   fetchMarketDataSummary,
+  fetchTodayMarketBriefing,
 } from "./marketDataContext.ts";
+import {
+  enforceDailyBriefingDateFields,
+  getDailyBriefingDatePromptBlock,
+} from "./mortgageNewsRssContext.ts";
 import { PRO_PORTAL_PRODUCT_CONTEXT, PRO_PORTAL_PUBLIC_PAGE_URL, needsProPortalContext } from "./proPortalContext.ts";
+import { formatLinkedInCaption } from "./linkedinPostFormat.ts";
+import { getLinkedInHashtagHints, LINKEDIN_POST_GUIDANCE } from "./linkedinPostGuidance.ts";
+import {
+  DEFAULT_EMAIL_TONE,
+  fetchRealTimeContext,
+  getEmailTonePromptBlock,
+  parseEmailTone,
+  type EmailTone,
+} from "./emailToneContext.ts";
 
-export { callOpenAI };
+export { callOpenAI, DailyMarketBriefingUnavailableError };
+
+const PRODUCT_INTELLIGENCE_TYPES = new Set<CampaignType>([
+  "conventional_product_spotlight",
+  "fha_product_spotlight",
+  "va_product_spotlight",
+  "usda_product_spotlight",
+  "non_qm_product_spotlight",
+  "jumbo_product_spotlight",
+  "loan_rescue",
+  "scenario_desk",
+]);
+
+export function buildSystemPrompt(templateSystem?: string | null): string {
+  const parts = [BROKER_GROWTH_ENGINE_PROMPT, BRAND_SYSTEM_PROMPT];
+  if (templateSystem?.trim()) {
+    parts.push(`Additional template rules:\n${templateSystem.trim()}`);
+  }
+  return parts.join("\n\n");
+}
 
 export interface GenerateOptions {
   campaignType: CampaignType;
@@ -30,6 +73,8 @@ export interface GenerateOptions {
   tipBrief?: BrokerGrowthTip;
   tipUserPrompt?: string;
   marketDataSummary?: string | null;
+  realTimeContext?: string | null;
+  emailTone?: EmailTone;
 }
 
 function parseGeneratedJson(raw: string): Record<string, unknown> {
@@ -40,7 +85,11 @@ function parseGeneratedJson(raw: string): Record<string, unknown> {
 }
 
 export function buildUserPrompt(options: GenerateOptions): string {
-  const parts: string[] = [];
+  const parts: string[] = [getCampaignTypeIntelligence(options.campaignType)];
+
+  if (PRODUCT_INTELLIGENCE_TYPES.has(options.campaignType)) {
+    parts.push(`\n${UFF_WHOLESALE_PRODUCT_MENU}`);
+  }
 
   if (options.template?.prompt_user) {
     parts.push(`Template instructions:\n${options.template.prompt_user}`);
@@ -62,7 +111,13 @@ export function buildUserPrompt(options: GenerateOptions): string {
     parts.push(`\n${options.tipUserPrompt}`);
   }
 
-  if (MARKET_DATA_CAMPAIGN_TYPES.has(options.campaignType)) {
+  if (options.campaignType === DAILY_BRIEFING_CAMPAIGN_TYPE) {
+    parts.push(`\n${getDailyBriefingDatePromptBlock()}`);
+    parts.push(`\n${DAILY_MARKET_BRIEFING_PROMPT_RULES}`);
+    if (options.marketDataSummary) {
+      parts.push(`\n${options.marketDataSummary}`);
+    }
+  } else if (MARKET_DATA_CAMPAIGN_TYPES.has(options.campaignType)) {
     parts.push(`\n${MARKET_COMMENTARY_PROMPT_RULES}`);
     if (options.marketDataSummary) {
       parts.push(`\n${options.marketDataSummary}`);
@@ -76,6 +131,14 @@ export function buildUserPrompt(options: GenerateOptions): string {
   if (needsProPortalContext(options.campaignType)) {
     parts.push(`\n${PRO_PORTAL_PRODUCT_CONTEXT}`);
   }
+
+  parts.push(`\n${LINKEDIN_POST_GUIDANCE}`);
+  parts.push(`\n${getLinkedInHashtagHints(options.campaignType)}`);
+
+  const tone = options.emailTone ?? DEFAULT_EMAIL_TONE;
+  parts.push(
+    `\n${getEmailTonePromptBlock(tone, { realTimeContext: options.realTimeContext ?? undefined })}`
+  );
 
   parts.push("\nReturn JSON only.");
   return parts.join("\n");
@@ -120,12 +183,14 @@ export async function generateCampaignContent(
   options: GenerateOptions
 ): Promise<GeneratedCampaignContent> {
   const template = options.template ?? (await repo.getTemplateByType(options.campaignType));
-  const systemPrompt = template?.prompt_system
-    ? `${BRAND_SYSTEM_PROMPT}\n\nAdditional template rules:\n${template.prompt_system}`
-    : BRAND_SYSTEM_PROMPT;
+  const systemPrompt = buildSystemPrompt(template?.prompt_system);
+
+  const emailTone = options.emailTone ?? DEFAULT_EMAIL_TONE;
 
   let marketDataSummary: string | null = null;
-  if (MARKET_DATA_CAMPAIGN_TYPES.has(options.campaignType)) {
+  if (options.campaignType === DAILY_BRIEFING_CAMPAIGN_TYPE) {
+    marketDataSummary = await fetchTodayMarketBriefing();
+  } else if (MARKET_DATA_CAMPAIGN_TYPES.has(options.campaignType)) {
     try {
       marketDataSummary = await fetchMarketDataSummary();
     } catch (e) {
@@ -133,9 +198,37 @@ export async function generateCampaignContent(
     }
   }
 
-  const userPrompt = buildUserPrompt({ ...options, template, marketDataSummary });
-  const raw = await callOpenAI(systemPrompt, userPrompt);
-  const parsed = parseGeneratedJson(raw);
+  let realTimeContext: string | undefined;
+  if (emailTone === "real_time" && options.campaignType !== DAILY_BRIEFING_CAMPAIGN_TYPE) {
+    try {
+      realTimeContext = await fetchRealTimeContext();
+    } catch (e) {
+      console.warn("Real-time context fetch failed:", e);
+    }
+  }
+
+  let userPrompt = buildUserPrompt({
+    ...options,
+    template,
+    marketDataSummary,
+    realTimeContext,
+    emailTone,
+  });
+  let parsed: Record<string, unknown> = {};
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const raw = await callOpenAI(systemPrompt, userPrompt);
+    parsed = parseGeneratedJson(raw);
+    const draft = mapAiResponseToCampaign(options.campaignType, parsed);
+    const edu = evaluateEducationalValue({
+      email_html: draft.email_html,
+      email_text: draft.email_text,
+      internal_summary: draft.internal_summary,
+    });
+    if (edu.passes || attempt === 1) break;
+    console.warn("Broker intelligence check failed, regenerating:", edu.reasons);
+    userPrompt = `${userPrompt}\n\n${EDUCATIONAL_RETRY_INSTRUCTION}\nFailure reasons: ${edu.reasons.join("; ")}`;
+  }
 
   const defaultList =
     options.audienceListId ??
@@ -150,6 +243,16 @@ export async function generateCampaignContent(
     normalizedList,
     template?.canva_template_id
   );
+
+  if (options.campaignType === DAILY_BRIEFING_CAMPAIGN_TYPE) {
+    enforceDailyBriefingDateFields(campaign);
+  }
+
+  if (campaign.linkedin_post?.trim()) {
+    campaign.linkedin_post = formatLinkedInCaption(campaign.linkedin_post, {
+      proPortalUrl: PRO_PORTAL_PUBLIC_PAGE_URL,
+    });
+  }
 
   const compliance = evaluateCompliance({
     email_subject: campaign.email_subject,
@@ -250,22 +353,35 @@ export async function regenerateField(
   repo: MarketingRepository,
   campaignType: CampaignType,
   field: "subject" | "linkedin" | "canva_prompt" | "email_html",
-  currentContent: Partial<GeneratedCampaignContent>
+  currentContent: Partial<GeneratedCampaignContent>,
+  emailToneOverride?: EmailTone
 ): Promise<Partial<GeneratedCampaignContent>> {
   const fieldMap: Record<string, string> = {
     subject: "Regenerate only the email_subject and preview_text fields as JSON: { email_subject, preview_text }",
-    linkedin: "Regenerate only linkedin_post as JSON: { linkedin_post }",
+    linkedin: `Regenerate only linkedin_post as JSON: { linkedin_post }. ${LINKEDIN_POST_GUIDANCE}`,
     canva_prompt: "Regenerate only canva_prompt as JSON: { canva_prompt }",
     email_html:
       "Regenerate email body content as JSON: { email_html, email_text }. email_html must be a BODY FRAGMENT only (paragraphs/highlight boxes — no logo, header, footer, or full HTML document). Keep subject consistent.",
   };
 
   const template = await repo.getTemplateByType(campaignType);
-  const systemPrompt = template?.prompt_system
-    ? `${BRAND_SYSTEM_PROMPT}\n\n${template.prompt_system}`
-    : BRAND_SYSTEM_PROMPT;
+  const systemPrompt = buildSystemPrompt(template?.prompt_system);
 
-  const userPrompt = `${fieldMap[field]}\n\nCurrent campaign context:\n${JSON.stringify(currentContent, null, 2)}`;
+  const emailTone = emailToneOverride ?? DEFAULT_EMAIL_TONE;
+  let toneContext: string | undefined;
+  if (emailTone === "real_time") {
+    try {
+      toneContext = await fetchRealTimeContext();
+    } catch {
+      toneContext = undefined;
+    }
+  }
+
+  let userPrompt = `${fieldMap[field]}\n\nCurrent campaign context:\n${JSON.stringify(currentContent, null, 2)}`;
+  userPrompt += `\n\n${getEmailTonePromptBlock(emailTone, { realTimeContext: toneContext })}`;
+  if (field === "linkedin") {
+    userPrompt += `\n\n${getLinkedInHashtagHints(campaignType)}`;
+  }
   const raw = await callOpenAI(systemPrompt, userPrompt);
   const parsed = parseGeneratedJson(raw);
 
@@ -279,9 +395,9 @@ export async function regenerateField(
         ? ((currentContent as Record<string, unknown>).landing_page_url as string)
         : undefined;
     let post = String(parsed.linkedin_post ?? "");
-    if (landingUrl) {
-      post = rewriteLinkedInPostForLanding(post, landingUrl);
-    }
+    post = landingUrl
+      ? rewriteLinkedInPostForLanding(post, landingUrl)
+      : formatLinkedInCaption(post, { proPortalUrl: PRO_PORTAL_PUBLIC_PAGE_URL });
     patch.linkedin_post = post;
   } else if (field === "canva_prompt") {
     patch.canva_prompt = String(parsed.canva_prompt ?? "");

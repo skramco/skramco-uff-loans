@@ -7,7 +7,9 @@ import {
   listCampaigns,
   getMarketingSettings,
   CAMPAIGN_TYPE_OPTIONS,
+  EMAIL_TONE_OPTIONS,
   type MarketingCampaign,
+  type EmailTone,
 } from '../../../services/marketingService';
 import MarketingErrorBanner from './MarketingErrorBanner';
 
@@ -36,7 +38,8 @@ export default function MarketingDashboard({ password }: Props) {
   const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [campaignType, setCampaignType] = useState('daily_rate_update');
+  const [campaignType, setCampaignType] = useState('market_intelligence');
+  const [emailTone, setEmailTone] = useState<EmailTone>('standard');
   const [error, setError] = useState('');
   const [loadError, setLoadError] = useState('');
   const [integrationStatus, setIntegrationStatus] = useState<Record<string, unknown>>({});
@@ -69,8 +72,8 @@ export default function MarketingDashboard({ password }: Props) {
     setError('');
     const result =
       campaignType === 'broker_business_growth_tip'
-        ? await generateBrokerGrowthTip(password)
-        : await generateCampaign(password, campaignType);
+        ? await generateBrokerGrowthTip(password, { emailTone })
+        : await generateCampaign(password, campaignType, { emailTone });
     setGenerating(false);
     if (result.error) {
       setError(result.error);
@@ -82,6 +85,7 @@ export default function MarketingDashboard({ password }: Props) {
   }
 
   const pending = campaigns.filter((c) => c.status === 'pending_approval').length;
+  const selectedTone = EMAIL_TONE_OPTIONS.find((o) => o.value === emailTone);
 
   return (
     <div className="space-y-6">
@@ -136,6 +140,20 @@ export default function MarketingDashboard({ password }: Props) {
               ))}
             </select>
           </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Email tone
+            <select
+              value={emailTone}
+              onChange={(e) => setEmailTone(e.target.value as EmailTone)}
+              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            >
+              {EMAIL_TONE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
             onClick={() => void handleGenerate()}
@@ -146,6 +164,9 @@ export default function MarketingDashboard({ password }: Props) {
             {campaignType === 'broker_business_growth_tip' ? 'Generate growth tip' : 'Generate'}
           </button>
         </div>
+        {selectedTone && (
+          <p className="mt-2 max-w-2xl text-xs text-slate-500">{selectedTone.description}</p>
+        )}
         {campaignType === 'broker_business_growth_tip' && (
           <p className="mt-3 max-w-2xl text-sm text-slate-400">
             AI researches one innovative broker business-development strategy, then builds a

@@ -38,7 +38,7 @@ Set via `npx supabase secrets set`:
 | `OPENAI_MODEL` | Optional, default `gpt-4o` |
 | `OPENAI_IMAGE_MODEL` | Optional, default `gpt-image-1` (use `dall-e-3` for legacy) |
 | `OPENAI_IMAGE_QUALITY` | Optional for GPT image models: `low`, `medium`, `high` (default `medium`) |
-| `FRED_API_KEY` | **Required for Daily Rate / Market Commentary** — live FRED economic data so AI uses real figures with dates |
+| `FRED_API_KEY` | **Recommended** — supplements daily briefing and powers Market Commentary / newsletter FRED blocks |
 | `MARKETING_IMAGE_PROVIDER` | Optional: `openai` (default) or `canva` |
 
 ### ActiveCampaign (Phase 2)
@@ -131,13 +131,25 @@ Jobs:
 
 | Job | Default schedule |
 |-----|------------------|
-| Daily rate update | Weekdays 7:30 AM ET |
+| Daily market briefing (`daily_rate_update`) | Weekdays **5:45 PM ET** — only runs when same-day RSS headlines exist |
 | PRO Portal feature | Weekdays 2:00 PM ET |
 | Weekly newsletter | Friday 9:00 AM ET |
 | Metrics sync | Every 6 hours |
 | Performance review | Sunday (weekly AI feedback) |
 
 Schedules are configurable in `marketing_settings` via admin Settings UI.
+
+## Broker Growth Engine
+
+Campaign copy is generated as **broker intelligence**, not generic lender marketing. Every email should help wholesale brokers identify, structure, rescue, submit, close, or grow pipeline.
+
+- **System prompt:** `brokerIntelligenceContext.ts` + `complianceGuardrails.ts`
+- **Campaign types:** Loan Rescue, Scenario Desk, Market Intelligence, Processing & Operations, Compliance & Guidelines, plus product spotlights (Conventional, FHA, VA, USDA, Non-QM, Jumbo)
+- **Validation:** Heuristic check + one automatic regeneration if content is too short or reads like fluff; `low_broker_intelligence` flag raises approval risk
+- **Daily market briefing:** Same-day headlines from [Mortgage News Daily](https://www.mortgagenewsdaily.com/rss/full), [HousingWire](https://www.housingwire.com/mortgage/feed/), [National Mortgage News](https://www.nationalmortgagenews.com/feed), [MPA US](https://www.mpamag.com/us/rss), [IMF Originations](https://www.insidemortgagefinance.com/rss/topic/1580-originations) — **skipped** if nothing published today (ET). FRED is optional supplemental data.
+- **Other market campaigns:** FRED for market commentary, market intelligence, weekly newsletter
+- **UFF positioning:** Competitive pricing and product breadth — never "best/lowest/guaranteed/fastest/#1"
+- **LinkedIn captions:** Educational copy with `{{LANDING_PAGE_URL}}` and **8–15 pertinent hashtags** at the end of every post (campaign-type hints in `linkedinPostGuidance.ts`)
 
 ## Safety rules
 

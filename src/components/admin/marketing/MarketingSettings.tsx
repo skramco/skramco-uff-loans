@@ -3,6 +3,7 @@ import { Loader2, Save } from 'lucide-react';
 import {
   getMarketingSettings,
   updateMarketingSetting,
+  parseAutoSendTrustedTypes,
   CAMPAIGN_TYPE_OPTIONS,
   listActiveCampaignLists,
   ACTIVECAMPAIGN_LIST_PRESETS,
@@ -29,6 +30,7 @@ export default function MarketingSettingsPage({ password }: Props) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
   const [threshold, setThreshold] = useState('0.6');
   const [linkedinAuto, setLinkedinAuto] = useState(false);
   const [linkedinApproval, setLinkedinApproval] = useState(true);
@@ -68,9 +70,7 @@ export default function MarketingSettingsPage({ password }: Props) {
       if (typeof data.settings.linkedin_require_approval === 'boolean') {
         setLinkedinApproval(data.settings.linkedin_require_approval);
       }
-      if (Array.isArray(data.settings.auto_send_trusted_types)) {
-        setTrustedTypes(data.settings.auto_send_trusted_types as string[]);
-      }
+      setTrustedTypes(parseAutoSendTrustedTypes(data.settings.auto_send_trusted_types));
 
       const effectiveId = parseListId(data.integrationStatus.defaultListId);
       const settingsId = parseListId(data.settings.activecampaign_default_list_id);
@@ -92,7 +92,8 @@ export default function MarketingSettingsPage({ password }: Props) {
 
   async function handleSave() {
     setSaving(true);
-    await Promise.all([
+    setSaveMessage('');
+    const results = await Promise.all([
       updateMarketingSetting(password, 'compliance_risk_threshold', parseFloat(threshold) || 0.6),
       updateMarketingSetting(password, 'linkedin_auto_post_enabled', linkedinAuto),
       updateMarketingSetting(password, 'linkedin_require_approval', linkedinApproval),
@@ -100,6 +101,12 @@ export default function MarketingSettingsPage({ password }: Props) {
       updateMarketingSetting(password, 'activecampaign_default_list_id', defaultListId.trim()),
     ]);
     setSaving(false);
+    const failed = results.find((r) => !r.success);
+    if (failed?.error) {
+      setSaveMessage(`Save failed: ${failed.error}`);
+    } else {
+      setSaveMessage('Settings saved.');
+    }
     await load();
   }
 
@@ -252,6 +259,17 @@ export default function MarketingSettingsPage({ password }: Props) {
 
           <fieldset>
             <legend className="text-sm text-slate-400">Auto-send trusted campaign types</legend>
+            <p className="mt-1 text-xs text-slate-500">
+              Checked types can skip human approval when compliance score is below the threshold and
+              there are no compliance flags. Cron jobs auto-send only for those types. You can still
+              send from campaign detail without approving when a campaign shows &quot;Approval
+              required: No&quot;.
+            </p>
+            {trustedTypes.length > 0 && (
+              <p className="mt-2 text-xs text-emerald-400/90">
+                Active: {trustedTypes.length} type{trustedTypes.length === 1 ? '' : 's'} selected
+              </p>
+            )}
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {CAMPAIGN_TYPE_OPTIONS.map((o) => (
                 <label key={o.value} className="flex items-center gap-2 text-sm">
@@ -286,6 +304,14 @@ export default function MarketingSettingsPage({ password }: Props) {
             />
             LinkedIn requires approval
           </label>
+
+          {saveMessage && (
+            <p
+              className={`text-sm ${saveMessage.startsWith('Save failed') ? 'text-red-400' : 'text-emerald-400'}`}
+            >
+              {saveMessage}
+            </p>
+          )}
 
           <button
             type="button"

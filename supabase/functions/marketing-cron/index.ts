@@ -4,6 +4,7 @@ import { loadApprovalSettings } from "../_shared/marketing/approvalRules.ts";
 import { buildIdempotencyKey } from "../_shared/marketing/idempotency.ts";
 import { MarketingRepository } from "../_shared/marketing/repository.ts";
 import type { CampaignType } from "../_shared/marketing/types.ts";
+import { DailyMarketBriefingUnavailableError } from "../_shared/marketing/marketDataContext.ts";
 import {
   runActiveCampaignSend,
   runCampaignGeneration,
@@ -95,10 +96,15 @@ async function runScheduledCampaignJob(
     return { campaignId };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "failed";
+    const skipped = e instanceof DailyMarketBriefingUnavailableError;
     if (claim.runId) {
-      await repo.completeSchedulerRun(claim.runId, "failed", { error: msg });
+      await repo.completeSchedulerRun(
+        claim.runId,
+        skipped ? "skipped" : "failed",
+        { error: msg, reason: skipped ? "no_same_day_headlines" : undefined }
+      );
     }
-    return { error: msg };
+    return skipped ? { skipped: true, reason: msg } : { error: msg };
   }
 }
 

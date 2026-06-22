@@ -1,3 +1,5 @@
+import { evaluateEducationalValue } from "./brokerIntelligenceContext.ts";
+import { LINKEDIN_POST_GUIDANCE } from "./linkedinPostGuidance.ts";
 import type { ComplianceResult } from "./types.ts";
 
 const FORBIDDEN_PHRASES = [
@@ -135,6 +137,19 @@ export function evaluateCompliance(content: {
   const scan = scanText(combined);
   let riskScore = Math.max(scan.score, content.aiRiskScore ?? 0);
 
+  const educational = evaluateEducationalValue({
+    email_html: content.email_html,
+    email_text: content.email_text,
+    internal_summary: content.preview_text,
+  });
+  if (!educational.passes) {
+    scan.flags.push("low_broker_intelligence");
+    riskScore = Math.min(1, riskScore + 0.12);
+    for (const reason of educational.reasons) {
+      scan.violations.push(`Broker intelligence: ${reason}`);
+    }
+  }
+
   if (content.consumer_facing) {
     scan.flags.push("consumer_facing");
     riskScore = Math.min(1, riskScore + 0.15);
@@ -168,7 +183,7 @@ export function stripPIIFromText(text: string): string {
   return out;
 }
 
-export const BRAND_SYSTEM_PROMPT = `You are a mortgage marketing copywriter for United Fidelity Funding (UFF) and the PRO Portal wholesale platform.
+export const BRAND_SYSTEM_PROMPT = `You write broker intelligence for United Fidelity Funding (UFF) wholesale — not consumer ads or generic lender marketing.
 
 BRAND: United Fidelity Funding / UFF / PRO Portal
 AUDIENCE: Wholesale mortgage brokers (unless explicitly marked consumer-facing)
@@ -194,7 +209,7 @@ Output valid JSON only with these fields:
   "preview_text": string,
   "email_html": string (BODY FRAGMENT ONLY — inner content for the white email body cell; do NOT include html/head/body, logo, header, footer, or outer tables. Use professional inline-styled fragments: <p style="font-family:Arial,sans-serif;font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">...</p>, optional highlight boxes with background:#eff6ff;border:1px solid #dbeafe;border-radius:8px;padding:16px. Match the tone of uff.loans transactional emails: clear, professional, broker-focused.),
   "email_text": string (plain-text version of body content only — no HTML),
-  "linkedin_post": string (under 3000 chars, professional tone; include {{LANDING_PAGE_URL}} as the link to the full broker resource on uff.pro — it will be replaced with the campaign landing page URL),
+  "linkedin_post": string (under 3000 chars; order: body → {{LANDING_PAGE_URL}} → hashtags → {{PRO_PORTAL_URL}} at bottom — see LINKEDIN rules below),
   "canva_prompt": string (design brief for the shared email + LinkedIn hero image — choose ONE visual theme: professional humans, nature, OR abstract corporate America; describe scene and mood; note where a subtle hidden red #dc2626 accent object should appear),
   "call_to_action": string (short button label, e.g. "Log in to PRO Portal"),
   "compliance_risk_score": number 0-1,
@@ -203,5 +218,7 @@ Output valid JSON only with these fields:
 }
 
 LINKS: In email_html, use href="{{LANDING_PAGE_URL}}" for ALL anchor links (read-more, learn-more, etc.). A broker landing page on uff.pro will replace this placeholder before send.
+
+${LINKEDIN_POST_GUIDANCE}
 
 The system automatically wraps email_html in the official UFF email template (red header, logo, footer, CTA button). Focus on strong body copy only.`;

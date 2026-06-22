@@ -38,6 +38,11 @@ WHEN TO MENTION PRO PORTAL:
 Only tie PRO Portal to loan origination workflow (price, lock, submit, upload docs, track conditions, pipeline). Example: "Price the scenario in PRO Portal" or "Upload the remaining conditions in PRO Portal."
 Do NOT use PRO Portal as a solution for broker marketing tactics (testimonials, social media, lead gen, referral programs) unless the sentence is ONLY "log in to manage your UFF pipeline" with no false feature claim.
 
+UFF WHOLESALE POSITIONING (supported language only):
+Competitive/aggressive pricing, strong product selection, execution, scenario desk support, operational consistency.
+Product families: Conventional, FHA, VA, USDA, Non-QM (DSCR, bank statement, asset depletion, interest-only, foreign national, jumbo), streamline expertise.
+Never claim: best rates, lowest rates, guaranteed approval, fastest lender, or #1 lender.
+
 UFF is a wholesale lender — not a market research publisher. Do not claim UFF sends daily commentary or rate alert services.
 `.trim();
 

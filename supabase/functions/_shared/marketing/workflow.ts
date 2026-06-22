@@ -45,6 +45,7 @@ import {
   researchBrokerGrowthTips,
   type BrokerGrowthTip,
 } from "./brokerGrowthTips.ts";
+import { DEFAULT_EMAIL_TONE, parseEmailTone, type EmailTone } from "./emailToneContext.ts";
 
 export async function runCampaignGeneration(
   supabase: SupabaseClient,
@@ -56,6 +57,7 @@ export async function runCampaignGeneration(
     actorType?: "user" | "scheduler" | "system";
     tipBrief?: BrokerGrowthTip;
     skipImage?: boolean;
+    emailTone?: EmailTone;
   }
 ): Promise<{ campaignId: string; content: GeneratedCampaignContent }> {
   const repo = new MarketingRepository(supabase);
@@ -70,6 +72,7 @@ export async function runCampaignGeneration(
   }
 
   const performanceSummary = await getPerformanceSummary((k) => repo.getSetting(k));
+  const emailTone = opts.emailTone ?? DEFAULT_EMAIL_TONE;
 
   const rawContent = await generateCampaignContent(repo, {
     campaignType: opts.campaignType,
@@ -80,11 +83,10 @@ export async function runCampaignGeneration(
     tipUserPrompt: opts.tipBrief
       ? buildTipCampaignUserPrompt(opts.tipBrief)
       : undefined,
+    emailTone,
   });
 
-  rawContent.linkedin_post = rawContent.linkedin_post
-    .replaceAll(LANDING_PAGE_PLACEHOLDER, PRO_PORTAL_PUBLIC_PAGE_URL)
-    .trim();
+  // LinkedIn: keep {{LANDING_PAGE_URL}} until approval; PRO Portal URL is formatted at bottom via linkedinPostFormat.
 
   const campaignId = crypto.randomUUID();
 
@@ -114,6 +116,7 @@ export async function runCampaignGeneration(
     compliance_risk_score: content.compliance_risk_score,
     metadata: {
       generation: { at: new Date().toISOString(), useVestaInsights: !!opts.useVestaInsights },
+      email_tone: emailTone,
       call_to_action: content.call_to_action,
       email_body_fragment: rawContent.email_html,
       email_text_fragment: rawContent.email_text,
@@ -331,6 +334,7 @@ export async function runSingleBrokerGrowthTipCampaign(
   opts: {
     actorType?: "user" | "scheduler" | "system";
     excludeTitles?: string[];
+    emailTone?: EmailTone;
   } = {}
 ): Promise<{ campaignId: string; tip: BrokerGrowthTip }> {
   const repo = new MarketingRepository(supabase);
@@ -340,6 +344,7 @@ export async function runSingleBrokerGrowthTipCampaign(
     campaignType: "broker_business_growth_tip",
     tipBrief: tip,
     actorType: opts.actorType ?? "user",
+    emailTone: opts.emailTone,
   });
 
   await logMarketingAction(repo, {

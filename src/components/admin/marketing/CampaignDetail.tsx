@@ -32,10 +32,12 @@ import {
   getAuditLog,
   syncCampaignMetrics,
   getMarketingSettings,
+  parseAutoSendTrustedTypes,
   ACTIVECAMPAIGN_LIST_PRESETS,
   type MarketingCampaign,
   type AuditLogEntry,
 } from '../../../services/marketingService';
+import { canSendCampaign } from '../../../lib/marketing/complianceGuardrails';
 import MarketingErrorBanner from './MarketingErrorBanner';
 
 interface Props {
@@ -64,6 +66,7 @@ export default function CampaignDetail({ password }: Props) {
   const [scheduleAt, setScheduleAt] = useState('');
   const [linkedInQueue, setLinkedInQueue] = useState<unknown[]>([]);
   const [settingsListId, setSettingsListId] = useState('');
+  const [autoSendTrustedTypes, setAutoSendTrustedTypes] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -83,6 +86,9 @@ export default function CampaignDetail({ password }: Props) {
       setLinkedInQueue(queue);
       const effective = settingsResult?.integrationStatus?.defaultListId;
       setSettingsListId(typeof effective === 'string' || typeof effective === 'number' ? String(effective) : '');
+      setAutoSendTrustedTypes(
+        parseAutoSendTrustedTypes(settingsResult?.settings?.auto_send_trusted_types)
+      );
     } catch {
       setError('Failed to load campaign.');
     } finally {
@@ -176,7 +182,13 @@ export default function CampaignDetail({ password }: Props) {
   const canDelete = ['draft', 'pending_approval', 'approved', 'failed', 'cancelled'].includes(
     campaign.status
   );
-  const canSend = ['approved', 'sent', 'scheduled', 'failed'].includes(campaign.status);
+  const sendCheck = canSendCampaign(
+    campaign.status,
+    campaign.approval_required,
+    campaign.campaign_type,
+    autoSendTrustedTypes
+  );
+  const canSend = sendCheck.allowed;
   const isResend = ['sent', 'scheduled', 'failed'].includes(campaign.status);
   const sendListId = settingsListId || campaign.activecampaign_list_id || '';
   const sendListLabel =
@@ -308,6 +320,16 @@ export default function CampaignDetail({ password }: Props) {
         <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-500">
           <span>Risk: {campaign.compliance_risk_score != null ? `${(campaign.compliance_risk_score * 100).toFixed(0)}%` : '—'}</span>
           <span>Approval required: {campaign.approval_required ? 'Yes' : 'No'}</span>
+          {!campaign.approval_required &&
+            autoSendTrustedTypes.includes(campaign.campaign_type) && (
+              <span className="text-emerald-400/90">Trusted auto-send type</span>
+            )}
+          {campaign.approval_required &&
+            autoSendTrustedTypes.includes(campaign.campaign_type) && (
+              <span className="text-amber-400/90">
+                Trusted type, but compliance review still required
+              </span>
+            )}
           {sendListId && (
             <span>
               Send list: {sendListLabel} (ID {sendListId})

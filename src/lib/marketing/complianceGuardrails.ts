@@ -109,6 +109,7 @@ export function canSendCampaign(
   autoSendTrustedTypes: string[]
 ): { allowed: boolean; reason?: string } {
   if (status === 'approved' || status === 'scheduled') return { allowed: true };
+  if (status === 'sent' || status === 'failed') return { allowed: true };
   if (!approvalRequired && autoSendTrustedTypes.includes(campaignType)) {
     return { allowed: true };
   }

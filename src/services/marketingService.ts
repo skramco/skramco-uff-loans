@@ -134,7 +134,12 @@ async function parseResponse<T>(response: Response): Promise<{ data?: T; error?:
 export async function generateCampaign(
   password: string,
   campaignType: string,
-  options?: { useVestaInsights?: boolean; templateId?: string; audienceListId?: string }
+  options?: {
+    useVestaInsights?: boolean;
+    templateId?: string;
+    audienceListId?: string;
+    emailTone?: EmailTone;
+  }
 ): Promise<{ campaign?: MarketingCampaign; error?: string }> {
   const response = await marketingFetch({
     action: 'generateCampaign',
@@ -148,11 +153,13 @@ export async function generateCampaign(
 }
 
 export async function generateBrokerGrowthTip(
-  password: string
+  password: string,
+  options?: { emailTone?: EmailTone }
 ): Promise<{ campaign?: MarketingCampaign; tip?: unknown; error?: string }> {
   const response = await marketingFetch({
     action: 'generateBrokerGrowthTip',
     password,
+    ...options,
   });
   const { data, error } = await parseResponse<{
     campaign: MarketingCampaign;
@@ -310,6 +317,46 @@ export async function updateTemplate(
   return error ? { success: false, error } : { success: true };
 }
 
+/** Normalize auto_send_trusted_types from DB (jsonb array). */
+export function parseAutoSendTrustedTypes(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((v): v is string => typeof v === 'string' && v.length > 0);
+}
+
+export const EMAIL_TONE_OPTIONS = [
+  {
+    value: 'standard',
+    label: 'Standard',
+    description:
+      'Professional broker intelligence (default). Every email includes a motivational quote of the day.',
+  },
+  {
+    value: 'funny',
+    label: 'Funny',
+    description:
+      'Engaging humor across subject lines, body copy, LinkedIn, and imagery — jokes and a funny word of the day.',
+  },
+  {
+    value: 'urgency',
+    label: 'Urgency',
+    description:
+      'Action-oriented copy that motivates brokers to act now — without false rate or approval claims.',
+  },
+  {
+    value: 'real_time',
+    label: 'Real-Time',
+    description:
+      "Grounded in today's mortgage headlines and market data with immediate, event-driven recommendations.",
+  },
+] as const;
+
+export type EmailTone = (typeof EMAIL_TONE_OPTIONS)[number]['value'];
+
+export function parseEmailTone(value: unknown): EmailTone {
+  const match = EMAIL_TONE_OPTIONS.find((o) => o.value === value);
+  return match?.value ?? 'standard';
+}
+
 export async function getMarketingSettings(password: string): Promise<{
   settings: Record<string, unknown>;
   integrationStatus: Record<string, unknown>;
@@ -416,8 +463,11 @@ export async function getLinkedInQueue(
 }
 
 export const CAMPAIGN_TYPE_OPTIONS = [
-  { value: 'daily_rate_update', label: 'Daily Rate Update' },
+  { value: 'daily_rate_update', label: 'Daily Market Briefing (same-day RSS)' },
   { value: 'market_commentary', label: 'Market Commentary' },
+  { value: 'market_intelligence', label: 'Market Intelligence' },
+  { value: 'loan_rescue', label: 'Loan Rescue' },
+  { value: 'scenario_desk', label: 'Scenario Desk' },
   { value: 'pro_portal_feature_spotlight', label: 'PRO Portal Feature Spotlight' },
   { value: 'fha_product_spotlight', label: 'FHA Product Spotlight' },
   { value: 'va_product_spotlight', label: 'VA Product Spotlight' },
@@ -427,10 +477,13 @@ export const CAMPAIGN_TYPE_OPTIONS = [
   { value: 'jumbo_product_spotlight', label: 'Jumbo Product Spotlight' },
   { value: 'broker_recruiting', label: 'Broker Recruiting' },
   { value: 'broker_business_growth_tip', label: 'Broker Business Growth Tip' },
+  { value: 'broker_growth', label: 'Broker Growth' },
   { value: 'operational_tip', label: 'Operational Tip' },
+  { value: 'processing_operations', label: 'Processing & Operations' },
   { value: 'closing_timeline_tip', label: 'Closing Timeline Tip' },
   { value: 'document_checklist_tip', label: 'Document Checklist Tip' },
   { value: 'compliance_broker_education', label: 'Compliance-Safe Broker Education' },
+  { value: 'compliance_guidelines', label: 'Compliance & Guidelines' },
   { value: 'weekly_broker_newsletter', label: 'Weekly Broker Newsletter' },
   { value: 're_engagement_campaign', label: 'Re-Engagement Campaign' },
 ];
