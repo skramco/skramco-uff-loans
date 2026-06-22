@@ -262,6 +262,145 @@ export function getEmailTonePromptBlock(
   }
 }
 
+/**
+ * System-prompt override — must win over "professional/corporate" voice elsewhere.
+ * Placed last in buildSystemPrompt so it takes precedence.
+ */
+export function getEmailToneSystemPromptBlock(
+  tone: EmailTone,
+  opts: EmailTonePromptOptions = {}
+): string {
+  const ref = opts.ref ?? new Date();
+
+  if (tone === "standard") {
+    const quote = getMotivationalQuoteOfTheDay(ref);
+    return `
+EMAIL TONE: STANDARD — voice/style requirements (compliance rules still apply)
+- Professional broker intelligence voice; practical and educational.
+- REQUIRED Motivational Quote of the Day in email_html (styled callout), email_text, and linkedin_post:
+  "${quote.quote}" — ${quote.author}
+`.trim();
+  }
+
+  if (tone === "funny") {
+    const funnyWord = getFunnyWordOfTheDay(ref);
+    return `
+CRITICAL EMAIL TONE OVERRIDE: FUNNY — this OVERRIDES any "professional", "corporate", or "transactional" voice instructions above.
+The user explicitly selected FUNNY. Do NOT output dry, standard broker newsletter copy.
+
+MANDATORY (verify before finishing JSON):
+1. email_subject — pun, joke hook, or playful wordplay (not a boring corporate subject line).
+2. email_html — open with a mortgage-industry joke OR a highlighted "Funny Word of the Day: ${funnyWord}" callout with a playful definition; include at least one additional pun or joke in the body.
+3. linkedin_post — at least one joke or pun in the body section (before the landing link).
+4. canva_prompt — cheerful, slightly playful visual mood (still photorealistic; no memes/clowns).
+5. Still include numbered broker action steps — humor wraps the intelligence, it does not replace it.
+6. Do NOT include a motivational quote of the day (that is for Standard tone only).
+`.trim();
+  }
+
+  if (tone === "urgency") {
+    return `
+CRITICAL EMAIL TONE OVERRIDE: URGENCY — this OVERRIDES neutral/corporate pacing above.
+The user selected URGENCY. Copy must feel time-sensitive and action-driven.
+
+MANDATORY:
+1. email_subject and preview_text — "act now" energy (honest deadlines only; no fake rate expirations).
+2. email_html — prominent "Do this now" section with 2–4 immediate broker action items.
+3. linkedin_post — open with a time-sensitive hook.
+4. canva_prompt — dynamic forward-motion energy.
+5. Do NOT include a motivational quote of the day.
+`.trim();
+  }
+
+  // real_time
+  return `
+CRITICAL EMAIL TONE OVERRIDE: REAL-TIME — this OVERRIDES generic/evergreen framing above.
+The user selected REAL-TIME. Every field must anchor to TODAY's date and current events from the REAL-TIME CONTEXT block in the user message.
+
+MANDATORY:
+1. email_subject — reference today's date or a specific current headline theme.
+2. email_html — open with "As of [today's date]" and immediate recommendations tied to provided headlines/data.
+3. linkedin_post — lead with what changed today.
+4. Do NOT write evergreen copy that could have been sent any week.
+5. Do NOT include a motivational quote of the day.
+`.trim();
+}
+
+export function evaluateToneDelivery(
+  tone: EmailTone,
+  content: {
+    email_subject?: string;
+    preview_text?: string;
+    email_html?: string;
+    email_text?: string;
+    linkedin_post?: string;
+    internal_summary?: string;
+  },
+  ref: Date = new Date()
+): { passes: boolean; reasons: string[] } {
+  if (tone === "standard") return { passes: true, reasons: [] };
+
+  const combined = [
+    content.email_subject,
+    content.preview_text,
+    content.email_html,
+    content.email_text,
+    content.linkedin_post,
+    content.internal_summary,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const plain = combined.replace(/<[^>]+>/g, " ").toLowerCase();
+  const reasons: string[] = [];
+
+  if (tone === "funny") {
+    const funnyWord = getFunnyWordOfTheDay(ref).toLowerCase();
+    const humorSignals =
+      plain.includes(funnyWord) ||
+      /\b(pun|joke|lol|haha|humor|humour|playful|laugh|😄|😂|🤣)\b/.test(plain) ||
+      /funny word of the day/i.test(combined);
+    if (!humorSignals) {
+      reasons.push(
+        `Funny tone required but output lacks humor signals or Funny Word of the Day "${funnyWord}"`
+      );
+    }
+  }
+
+  if (tone === "urgency") {
+    const urgencySignals =
+      /\b(now|today|this week|act fast|don't wait|time-sensitive|before (close|eod|deadline)|immediate|asap|24 hours?|48 hours?)\b/.test(
+        plain
+      ) || /do this now/i.test(combined);
+    if (!urgencySignals) {
+      reasons.push("Urgency tone required but output lacks time-sensitive language");
+    }
+  }
+
+  if (tone === "real_time") {
+    const dateLabel = getTodayBriefingDateLabel(ref).toLowerCase();
+    const ymd = getEtYmd(ref);
+    const hasDate = plain.includes(dateLabel) || plain.includes(ymd) || /as of today/i.test(plain);
+    if (!hasDate) {
+      reasons.push("Real-Time tone required but output lacks today's date framing");
+    }
+  }
+
+  return { passes: reasons.length === 0, reasons };
+}
+
+export function getToneRetryInstruction(tone: EmailTone, reasons: string[], ref: Date = new Date()): string {
+  const toneBlock =
+    tone === "real_time"
+      ? getEmailToneSystemPromptBlock(tone)
+      : getEmailToneSystemPromptBlock(tone, { ref });
+  return `
+REJECTED DRAFT: Prior output failed the selected EMAIL TONE check (${tone}).
+Failure reasons: ${reasons.join("; ")}
+
+Regenerate the FULL JSON. ${toneBlock}
+`.trim();
+}
+
 /** Additional image-generation rules per tone (appended to canva/OpenAI image prompts). */
 export function getEmailToneImageRules(tone: EmailTone): string {
   switch (tone) {

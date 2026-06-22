@@ -145,6 +145,7 @@ export async function generateCampaign(
     action: 'generateCampaign',
     password,
     campaignType,
+    emailTone: options?.emailTone ?? 'standard',
     ...options,
   });
   const { data, error } = await parseResponse<{ campaign: MarketingCampaign }>(response);
@@ -159,6 +160,7 @@ export async function generateBrokerGrowthTip(
   const response = await marketingFetch({
     action: 'generateBrokerGrowthTip',
     password,
+    emailTone: options?.emailTone ?? 'standard',
     ...options,
   });
   const { data, error } = await parseResponse<{

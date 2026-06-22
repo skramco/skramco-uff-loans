@@ -120,7 +120,7 @@ Deno.serve(async (req: Request) => {
           audienceListId: body.audienceListId,
           useVestaInsights: body.useVestaInsights === true,
           actorType: "user",
-          emailTone: body.emailTone ? parseEmailTone(body.emailTone) : undefined,
+          emailTone: parseEmailTone(body.emailTone),
         });
 
         const campaign = await repo.getCampaign(result.campaignId);
@@ -139,7 +139,7 @@ Deno.serve(async (req: Request) => {
         const result = await runSingleBrokerGrowthTipCampaign(supabase, {
           actorType: "user",
           excludeTitles,
-          emailTone: body.emailTone ? parseEmailTone(body.emailTone) : undefined,
+          emailTone: parseEmailTone(body.emailTone),
         });
         const campaign = await repo.getCampaign(result.campaignId);
         return jsonResponse({

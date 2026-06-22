@@ -140,6 +140,7 @@ export async function runCampaignGeneration(
       campaignType: opts.campaignType,
       approvalRequired: content.approval_required,
       landingPageDeferred: true,
+      emailTone,
     },
   });
 

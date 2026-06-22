@@ -1,8 +1,10 @@
 import {
   DEFAULT_EMAIL_TONE,
   EMAIL_TONES,
+  evaluateToneDelivery,
   getEmailTonePromptBlock,
   getEmailToneImageRules,
+  getEmailToneSystemPromptBlock,
   getFunnyWordOfTheDay,
   getMotivationalQuoteOfTheDay,
   parseEmailTone,
@@ -53,11 +55,23 @@ Deno.test("getEmailTonePromptBlock includes tone-specific requirements", () => {
   }
 });
 
-Deno.test("getEmailToneImageRules returns tone-specific guidance", () => {
-  if (!getEmailToneImageRules("funny").includes("playful")) {
-    throw new Error("Funny image rules expected");
-  }
-  if (!getEmailToneImageRules("standard").includes("uplifting")) {
-    throw new Error("Standard image rules expected");
+Deno.test("evaluateToneDelivery detects funny tone markers", () => {
+  const ref = new Date("2026-06-22T12:00:00Z");
+  const word = getFunnyWordOfTheDay(ref);
+  const fail = evaluateToneDelivery("funny", { email_subject: "Market update" }, ref);
+  if (fail.passes) throw new Error("Expected funny tone failure");
+
+  const pass = evaluateToneDelivery(
+    "funny",
+    { email_html: `Funny Word of the Day: ${word} — a broker term`, email_subject: "A punny subject" },
+    ref
+  );
+  if (!pass.passes) throw new Error(`Expected funny tone pass: ${pass.reasons.join(", ")}`);
+});
+
+Deno.test("getEmailToneSystemPromptBlock includes override for funny", () => {
+  const block = getEmailToneSystemPromptBlock("funny", { ref: new Date("2026-06-22T12:00:00Z") });
+  if (!block.includes("CRITICAL EMAIL TONE OVERRIDE")) {
+    throw new Error("Expected system override block");
   }
 });

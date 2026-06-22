@@ -33,6 +33,8 @@ import {
   syncCampaignMetrics,
   getMarketingSettings,
   parseAutoSendTrustedTypes,
+  EMAIL_TONE_OPTIONS,
+  parseEmailTone,
   ACTIVECAMPAIGN_LIST_PRESETS,
   type MarketingCampaign,
   type AuditLogEntry,
@@ -234,6 +236,14 @@ export default function CampaignDetail({ password }: Props) {
             <h2 className="text-xl font-semibold">{campaign.title ?? 'Untitled campaign'}</h2>
             <p className="mt-1 text-sm text-slate-400 capitalize">
               {campaign.campaign_type.replace(/_/g, ' ')} · {campaign.status.replace(/_/g, ' ')}
+              {typeof campaign.metadata?.email_tone === 'string' && (
+                <>
+                  {' · '}
+                  Tone:{' '}
+                  {EMAIL_TONE_OPTIONS.find((o) => o.value === parseEmailTone(campaign.metadata.email_tone))
+                    ?.label ?? String(campaign.metadata.email_tone)}
+                </>
+              )}
             </p>
             {campaign.internal_summary && (
               <p className="mt-3 text-sm text-slate-300">{campaign.internal_summary}</p>

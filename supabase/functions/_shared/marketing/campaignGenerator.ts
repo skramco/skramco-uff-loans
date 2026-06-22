@@ -37,8 +37,11 @@ import { formatLinkedInCaption } from "./linkedinPostFormat.ts";
 import { getLinkedInHashtagHints, LINKEDIN_POST_GUIDANCE } from "./linkedinPostGuidance.ts";
 import {
   DEFAULT_EMAIL_TONE,
+  evaluateToneDelivery,
   fetchRealTimeContext,
   getEmailTonePromptBlock,
+  getEmailToneSystemPromptBlock,
+  getToneRetryInstruction,
   parseEmailTone,
   type EmailTone,
 } from "./emailToneContext.ts";
@@ -56,11 +59,15 @@ const PRODUCT_INTELLIGENCE_TYPES = new Set<CampaignType>([
   "scenario_desk",
 ]);
 
-export function buildSystemPrompt(templateSystem?: string | null): string {
+export function buildSystemPrompt(
+  templateSystem?: string | null,
+  emailTone: EmailTone = DEFAULT_EMAIL_TONE
+): string {
   const parts = [BROKER_GROWTH_ENGINE_PROMPT, BRAND_SYSTEM_PROMPT];
   if (templateSystem?.trim()) {
     parts.push(`Additional template rules:\n${templateSystem.trim()}`);
   }
+  parts.push(getEmailToneSystemPromptBlock(emailTone));
   return parts.join("\n\n");
 }
 
@@ -183,9 +190,8 @@ export async function generateCampaignContent(
   options: GenerateOptions
 ): Promise<GeneratedCampaignContent> {
   const template = options.template ?? (await repo.getTemplateByType(options.campaignType));
-  const systemPrompt = buildSystemPrompt(template?.prompt_system);
-
   const emailTone = options.emailTone ?? DEFAULT_EMAIL_TONE;
+  const systemPrompt = buildSystemPrompt(template?.prompt_system, emailTone);
 
   let marketDataSummary: string | null = null;
   if (options.campaignType === DAILY_BRIEFING_CAMPAIGN_TYPE) {
@@ -216,7 +222,7 @@ export async function generateCampaignContent(
   });
   let parsed: Record<string, unknown> = {};
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const raw = await callOpenAI(systemPrompt, userPrompt);
     parsed = parseGeneratedJson(raw);
     const draft = mapAiResponseToCampaign(options.campaignType, parsed);
@@ -225,9 +231,20 @@ export async function generateCampaignContent(
       email_text: draft.email_text,
       internal_summary: draft.internal_summary,
     });
-    if (edu.passes || attempt === 1) break;
-    console.warn("Broker intelligence check failed, regenerating:", edu.reasons);
-    userPrompt = `${userPrompt}\n\n${EDUCATIONAL_RETRY_INSTRUCTION}\nFailure reasons: ${edu.reasons.join("; ")}`;
+    const toneCheck = evaluateToneDelivery(emailTone, draft);
+    if ((edu.passes && toneCheck.passes) || attempt === 2) {
+      if (!toneCheck.passes) {
+        console.warn("Tone check failed after retries:", toneCheck.reasons, "tone:", emailTone);
+      }
+      break;
+    }
+    if (!edu.passes) {
+      console.warn("Broker intelligence check failed, regenerating:", edu.reasons);
+      userPrompt = `${userPrompt}\n\n${EDUCATIONAL_RETRY_INSTRUCTION}\nFailure reasons: ${edu.reasons.join("; ")}`;
+      continue;
+    }
+    console.warn("Tone check failed, regenerating:", toneCheck.reasons, "tone:", emailTone);
+    userPrompt = `${userPrompt}\n\n${getToneRetryInstruction(emailTone, toneCheck.reasons)}`;
   }
 
   const defaultList =
@@ -365,9 +382,8 @@ export async function regenerateField(
   };
 
   const template = await repo.getTemplateByType(campaignType);
-  const systemPrompt = buildSystemPrompt(template?.prompt_system);
-
   const emailTone = emailToneOverride ?? DEFAULT_EMAIL_TONE;
+  const systemPrompt = buildSystemPrompt(template?.prompt_system, emailTone);
   let toneContext: string | undefined;
   if (emailTone === "real_time") {
     try {
