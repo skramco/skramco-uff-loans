@@ -27,7 +27,7 @@ export const EMAIL_TONE_LABELS: Record<EmailTone, string> = {
 export const EMAIL_TONE_DESCRIPTIONS: Record<EmailTone, string> = {
   standard:
     "Professional broker intelligence with a motivational quote of the day in every email.",
-  funny: "Edgy, shockingly funny broker humor — sharp and bold, never corny puns or dad jokes.",
+  funny: "Borderline insulting broker humor — roasts lazy habits, then delivers intricate rescue scenarios. No corny puns.",
   urgency: "Action-oriented copy that motivates brokers to act now — without false rate claims.",
   real_time:
     "Grounded in today's mortgage headlines and market data with immediate, event-driven recommendations.",
@@ -211,29 +211,33 @@ FUNNY TONE — HARD LIMITS (non-negotiable):
 - NO profanity, slurs, sexual content, innuendo, or crude body humor.
 - NO mocking borrowers, veterans, protected classes, or individuals.
 - NO guaranteed-approval jokes or deceptive rate humor.
-- YES to edgy, deadpan, sarcastic, hyperbolic, absurdist mortgage-industry humor that makes brokers exhale-laugh.
+- YES: roast broker complacency, lazy AUS habits, "FHA reflex" pivots, one-and-done scenario work, and industry sacred cows — borderline insulting, provocative, make them feel called out (then deliver the fix).
+- YES: savage deadpan, hyperbolic broker-pain truth, absurdist underwriting horror, uncomfortable accuracy.
 `.trim();
 
 const EDGY_FUNNY_STYLE = `
-FUNNY TONE — VOICE (edgy, not corny):
-- Write like a top producer with a dark sense of humor and zero patience for industry BS — shockingly funny, not "newsletter cute."
-- Prefer: savage deadpan, brutal honesty, unexpected analogies, hyperbolic broker-pain truth, absurdist scenarios, punchy one-liners, "you had to be there" underwriting horror stories played for laughs.
-- AVOID: dad jokes, forced puns, "funny word of the day," motivational-poster humor, office-lunch corny bits, emoji spam, and try-hard wordplay (no "loan-tastic", no groaners).
-- Subject lines should stop the scroll — bold, weird, or uncomfortably accurate (not clickbait).
-- email_html: open with a killer hook (one sharp line or mini-scene), then deliver real broker intelligence underneath the humor.
-- linkedin_post: same edge in the body — make peers tag their ops team.
-- canva_prompt: visual joke tied to the bit (absurd metaphor made literal) — not people laughing in a conference room.
-- Humor wraps the intelligence; still include numbered broker action steps.
+FUNNY TONE — VOICE (borderline insulting, never corny):
+- Write like a ruthless top producer who thinks most brokers are leaving six figures on the table because they can't read a guideline PDF — shockingly funny, not "newsletter cute."
+- OPEN by insulting the reader's habits (playfully brutal): one-AUS-and-quit, default FHA pivot, ignoring asset depletion, treating Non-QM like a last resort, pipeline neglect, denial-letter reflex.
+- Prefer: savage deadpan, brutal honesty, call-out humor, unexpected analogies, hyperbolic broker-pain truth, absurdist scenarios, punchy one-liners, "you donated that deal to your competitor" energy.
+- AVOID: dad jokes, forced puns, motivational-poster humor, office-lunch corny bits, emoji spam, try-hard wordplay (no "loan-tastic", no groaners).
+- Subject lines must sting — make them open out of guilt, curiosity, or defensive pride ("You're not bad at this. You're just lazy about asset depletion.").
+- email_html: insult → intricate rescue scenario → numbered action steps. The roast sells the intelligence.
+- linkedin_post: same energy — peers should feel tagged and attacked (in a good way).
+- canva_prompt: visual punchline for the roast (broker asleep at pipeline wheel, competitor closing with bank statements, etc.).
 `.trim();
 
 function funnyToneBlock(): string {
   return `
-EMAIL TONE: FUNNY — EDGY WHOLESALE HUMOR
+EMAIL TONE: FUNNY — BORDERLINE INSULTING WHOLESALE HUMOR
 ${FUNNY_TONE_BOUNDARIES}
 
 ${EDGY_FUNNY_STYLE}
 
-Tone reference (style only — do not copy verbatim): "Your pipeline isn't slow — it's ghosting you harder than a borrower who 'just needs to find their W-2 from 2019.'" / "Underwriting didn't decline the file. They put it in witness protection."
+Tone reference (style only — do not copy verbatim):
+- "You didn't lose that deal. You gift-wrapped it for a broker who knows what asset depletion is."
+- "Running AUS once isn't scenario work. It's a coin flip with extra steps."
+- "If your DTI rescue plan starts with FHA, you're not structuring — you're surrendering."
 `.trim();
 }
 
@@ -316,17 +320,17 @@ EMAIL TONE: STANDARD — voice/style requirements (compliance rules still apply)
 
   if (tone === "funny") {
     return `
-CRITICAL EMAIL TONE OVERRIDE: FUNNY (EDGY) — this OVERRIDES any "professional", "corporate", or "transactional" voice instructions above.
+CRITICAL EMAIL TONE OVERRIDE: FUNNY (BORDERLINE INSULTING) — this OVERRIDES any "professional", "corporate", or "transactional" voice instructions above.
 The user selected FUNNY. Do NOT output dry, standard, or corny broker newsletter copy.
 
 ${FUNNY_TONE_BOUNDARIES}
 
 MANDATORY (verify before finishing JSON):
-1. email_subject — scroll-stopping, edgy, or uncomfortably accurate (NOT a pun, NOT corporate, NOT "Happy Tuesday").
-2. email_html — open with a sharp hook (deadpan one-liner, absurdist mini-scene, or savage broker-truth joke); at least one more edgy beat in the body. NO "funny word of the day" callouts. NO dad jokes.
-3. linkedin_post — same edge in the body section (before the landing link); should feel share-worthy, not safe.
-4. canva_prompt — literal visual punchline for the joke (absurd metaphor, unexpected scene) — NOT generic office laughter.
-5. Still include numbered broker action steps — the comedy sells the intelligence, not the other way around.
+1. email_subject — stings, provokes, or calls out broker complacency (NOT a pun, NOT corporate, NOT "Happy Tuesday").
+2. email_html — open with a borderline-insulting roast of broker habits (lazy AUS, FHA reflex, ignoring Non-QM); then deliver an intricate rescue scenario with specific docs/lookback; one more roast beat in the body. NO dad jokes.
+3. linkedin_post — same roast-then-rescue energy in the body section (before the landing link).
+4. canva_prompt — visual punchline for the insult/roast — NOT generic office laughter.
+5. Still include numbered broker action steps — the roast makes them open it; the scenario makes the phone ring.
 6. Do NOT include a motivational quote of the day (Standard tone only).
 `.trim();
   }
@@ -435,6 +439,8 @@ export function hasEdgyHumorSignals(text: string): boolean {
     /\b(what could go wrong|as if|imagine if|spoiler:|not great|yikes|oof|look—you|let's be honest|i'll wait|respectfully)\b/i,
     /\b(underwriting|conditions?|pipeline|vesting|lock desk).{0,40}(nightmare|circus|horror|hostage|meltdown|chaos)/i,
     /\b(deadpan|absurd|uncomfortably accurate)\b/i,
+    /\b(you didn't lose|you donated|gift-wrapped|lazy|complacent|one aus|coin flip|surrender|asleep at|your competitor|leaving money|six figures|denial letter|fha reflex|not structuring)\b/i,
+    /\b(if your|you're not bad|you're just|stop treating|most brokers|pipeline neglect|guideline pdf)\b/i,
   ];
 
   return edgyPatterns.some((p) => p.test(text));

@@ -55,7 +55,7 @@ Deno.test("getEmailTonePromptBlock covers all tones", () => {
   if (!standard.includes(quote.quote)) throw new Error("Standard tone must include quote");
 
   const funny = getEmailTonePromptBlock("funny");
-  if (!funny.includes("EDGY")) throw new Error("Funny tone must describe edgy humor");
+  if (!funny.includes("BORDERLINE INSULTING")) throw new Error("Funny tone must describe insulting edgy humor");
   if (/funny word for this campaign/i.test(funny)) {
     throw new Error("Funny tone must not require corny funny-word callouts");
   }
@@ -83,8 +83,8 @@ Deno.test("evaluateToneDelivery rejects dry and corny funny copy", () => {
 
   const edgy = evaluateToneDelivery("funny", {
     email_html:
-      "Your pipeline isn't slow — it's ghosting you. Underwriting put the file in witness protection.",
-    email_subject: "Your conditions list called. It's not great.",
+      "If your DTI rescue plan starts with FHA, you're not structuring — you're surrendering. That retiree with $1.1M IRA? Asset depletion. 36-month lookback.",
+    email_subject: "You didn't lose that deal. You gift-wrapped it.",
   });
   if (!edgy.passes) throw new Error(`Expected funny tone pass: ${edgy.reasons.join(", ")}`);
 });
@@ -105,7 +105,7 @@ Deno.test("getEmailToneSystemPromptBlock includes edgy override for funny", () =
   if (!block.includes("CRITICAL EMAIL TONE OVERRIDE")) {
     throw new Error("Expected system override block");
   }
-  if (!block.includes("EDGY")) throw new Error("Expected edgy funny override");
+  if (!block.includes("BORDERLINE INSULTING")) throw new Error("Expected edgy funny override");
   if (/funny word/i.test(block)) throw new Error("System block must not require funny word");
 });
 

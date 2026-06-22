@@ -233,11 +233,16 @@ export async function generateCampaignContent(
     const raw = await callOpenAI(systemPrompt, userPrompt);
     parsed = parseGeneratedJson(raw);
     const draft = mapAiResponseToCampaign(options.campaignType, parsed);
-    const edu = evaluateEducationalValue({
-      email_html: draft.email_html,
-      email_text: draft.email_text,
-      internal_summary: draft.internal_summary,
-    });
+    const edu = evaluateEducationalValue(
+      {
+        email_subject: draft.email_subject,
+        preview_text: draft.preview_text,
+        email_html: draft.email_html,
+        email_text: draft.email_text,
+        internal_summary: draft.internal_summary,
+      },
+      { campaignType: options.campaignType }
+    );
     const toneCheck = evaluateToneDelivery(emailTone, draft);
     if ((edu.passes && toneCheck.passes) || attempt === 2) {
       if (!toneCheck.passes) {

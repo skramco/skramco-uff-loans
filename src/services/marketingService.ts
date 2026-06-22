@@ -336,7 +336,7 @@ export const EMAIL_TONE_OPTIONS = [
     value: 'funny',
     label: 'Funny',
     description:
-      'Edgy, shockingly funny broker humor — sharp deadpan and absurdist beats across subject, body, LinkedIn, and imagery. No corny puns.',
+      'Borderline insulting broker humor — roasts lazy habits, then delivers intricate rescue scenarios. No corny puns.',
   },
   {
     value: 'urgency',

@@ -25,9 +25,9 @@ Additional rules:
 
 const CAMPAIGN_HASHTAG_HINTS: Partial<Record<CampaignType, string>> = {
   loan_rescue:
-    "#LoanRescue #DealStructuring #MortgageUnderwriting #DTI #AlternativeLending #FHA #NonQM #BankStatementLoan #DSCR",
+    "#LoanRescue #DealStructuring #MortgageUnderwriting #DTI #AlternativeLending #NonQM #AssetDepletion #BankStatementLoan #DSCR #ScenarioDesk",
   scenario_desk:
-    "#ScenarioDesk #MortgageUnderwriting #ComplexIncome #SelfEmployed #MortgageBroker #LoanStructuring",
+    "#ScenarioDesk #MortgageUnderwriting #ComplexIncome #SelfEmployed #AssetDepletion #BankStatementLoan #DSCR #MortgageBroker #LoanStructuring",
   broker_business_growth_tip:
     "#MortgageBroker #BusinessDevelopment #ReferralMarketing #LoanOfficer #WholesaleLending #MortgageIndustry",
   broker_growth:
