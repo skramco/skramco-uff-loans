@@ -138,7 +138,8 @@ export async function pushFileToGitHub(
 
 async function generateLandingPageJson(
   campaignId: string,
-  content: GeneratedCampaignContent
+  content: GeneratedCampaignContent,
+  heroImageUrl?: string | null
 ): Promise<CampaignLandingPageJson> {
   const slug = slugifyCampaignTitle(content.title, campaignId);
   const systemPrompt = `You write broker intelligence landing pages for United Fidelity Funding (UFF) wholesale mortgage.
@@ -187,7 +188,7 @@ Return JSON:
     campaignId,
     campaignType: content.campaign_type,
     publishedAt: new Date().toISOString(),
-    heroImageUrl: null,
+    heroImageUrl: heroImageUrl?.trim() || null,
     keyTakeaways: Array.isArray(parsed.keyTakeaways)
       ? parsed.keyTakeaways.map(String).slice(0, 6)
       : [],
@@ -245,7 +246,8 @@ export function rewriteLinkedInPostForLanding(
 
 export async function createAndPublishProLandingPage(
   campaignId: string,
-  content: GeneratedCampaignContent
+  content: GeneratedCampaignContent,
+  opts?: { heroImageUrl?: string | null }
 ): Promise<ProLandingPageResult> {
   if (!Deno.env.get("GITHUB_TOKEN")) {
     const slug = slugifyCampaignTitle(content.title, campaignId);
@@ -258,7 +260,7 @@ export async function createAndPublishProLandingPage(
     };
   }
 
-  const landing = await generateLandingPageJson(campaignId, content);
+  const landing = await generateLandingPageJson(campaignId, content, opts?.heroImageUrl);
   const githubPath = `content/campaigns/${landing.slug}.json`;
   const json = `${JSON.stringify(landing, null, 2)}\n`;
 

@@ -440,11 +440,17 @@ export async function syncCampaignMetrics(
 export async function publishLinkedInPost(
   password: string,
   campaignId: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; postId?: string; error?: string }> {
   const response = await marketingFetch({ action: 'publishLinkedInPost', password, campaignId });
-  const { data, error } = await parseResponse<{ success: boolean }>(response);
+  const { data, error } = await parseResponse<{
+    success: boolean;
+    result?: { postId?: string };
+  }>(response);
   if (error) return { success: false, error };
-  return { success: data?.success ?? false };
+  return {
+    success: data?.success ?? false,
+    postId: data?.result?.postId,
+  };
 }
 
 export async function markLinkedInPublished(

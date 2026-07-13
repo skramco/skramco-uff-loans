@@ -155,6 +155,7 @@ export default function CampaignDetail({ password }: Props) {
   const [linkedInQueue, setLinkedInQueue] = useState<unknown[]>([]);
   const [settingsListId, setSettingsListId] = useState('');
   const [autoSendTrustedTypes, setAutoSendTrustedTypes] = useState<string[]>([]);
+  const [linkedinConfigured, setLinkedinConfigured] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<ContentDraft | null>(null);
   const [savedDraft, setSavedDraft] = useState<ContentDraft | null>(null);
@@ -188,6 +189,12 @@ export default function CampaignDetail({ password }: Props) {
       setSettingsListId(typeof effective === 'string' || typeof effective === 'number' ? String(effective) : '');
       setAutoSendTrustedTypes(
         parseAutoSendTrustedTypes(settingsResult?.settings?.auto_send_trusted_types)
+      );
+      setLinkedinConfigured(
+        !!(
+          settingsResult?.integrationStatus?.linkedinConfigured ??
+          settingsResult?.integrationStatus?.linkedin
+        )
       );
     } catch {
       setError('Failed to load campaign.');
@@ -566,7 +573,8 @@ export default function CampaignDetail({ password }: Props) {
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
             <p className="mt-2 text-xs text-slate-500">
-              Email CTAs and body links point here. Published via GitHub for Netlify auto-deploy.
+              Email CTAs and body links point here. The campaign hero image is included on this page
+              when available. Published via GitHub for Netlify auto-deploy.
             </p>
           </div>
         )}
@@ -779,19 +787,60 @@ export default function CampaignDetail({ password }: Props) {
                 className="max-h-72 w-full object-cover"
               />
               <p className="border-t border-slate-800 px-3 py-2 text-xs text-slate-500">
-                Same hero image as the email — copy or download, then attach in LinkedIn.
+                Same hero as email and the uff.pro landing page — included automatically when you
+                publish via API.
               </p>
             </div>
           ) : (
             <p className="mb-4 rounded-lg border border-dashed border-slate-700 px-3 py-4 text-center text-xs text-slate-500">
-              No image yet. Use <strong>Generate image</strong> above — it will appear here for manual
-              LinkedIn posting.
+              No image yet. Use <strong>Generate image</strong> above before publishing so LinkedIn
+              and the landing page get the hero.
             </p>
           )}
 
           <pre className="whitespace-pre-wrap text-sm text-slate-300">{campaign.linkedin_post ?? 'No LinkedIn copy'}</pre>
 
+          {!linkedinConfigured && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/90">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                LinkedIn API is not configured. Add{' '}
+                <code className="text-amber-200">LINKEDIN_ACCESS_TOKEN</code> and{' '}
+                <code className="text-amber-200">LINKEDIN_ORGANIZATION_ID</code> in Supabase secrets
+                to publish without copy/paste.
+              </p>
+            </div>
+          )}
+
           <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={!!busy || !linkedinConfigured || !campaign.linkedin_post}
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    heroImageUrl
+                      ? 'Publish this caption and hero image to the UFF LinkedIn company page now?'
+                      : 'Publish this caption to LinkedIn now? (No hero image attached yet.)'
+                  )
+                ) {
+                  return;
+                }
+                void runAction('LinkedIn publish', async () => {
+                  const result = await publishLinkedInPost(password, campaign.id);
+                  if (result.error) return { error: result.error };
+                  return { success: true };
+                });
+              }}
+              className="flex items-center gap-1.5 rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium hover:bg-blue-600 disabled:opacity-50"
+            >
+              {busy === 'LinkedIn publish' ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Linkedin className="h-4 w-4" />
+              )}
+              Publish to LinkedIn
+            </button>
             <button
               type="button"
               onClick={() => void handleCopyLinkedIn()}
@@ -820,14 +869,6 @@ export default function CampaignDetail({ password }: Props) {
             <button
               type="button"
               disabled={!!busy}
-              onClick={() => runAction('LinkedIn publish', () => publishLinkedInPost(password, campaign.id))}
-              className="flex items-center gap-1 rounded-lg bg-blue-700 px-3 py-1.5 text-xs hover:bg-blue-600 disabled:opacity-50"
-            >
-              Publish via API
-            </button>
-            <button
-              type="button"
-              disabled={!!busy}
               onClick={() => runAction('Mark published', () => markLinkedInPublished(password, campaign.id))}
               className="flex items-center gap-1 rounded-lg border border-slate-700 px-3 py-1.5 text-xs hover:bg-slate-800 disabled:opacity-50"
             >
@@ -835,8 +876,9 @@ export default function CampaignDetail({ password }: Props) {
             </button>
           </div>
           <p className="mt-3 text-xs text-slate-500">
-            Manual post: copy caption → paste in LinkedIn → add media (copy or download image) → post.
-            Caption stays in sync with body copy when you use Edit content.
+            Preferred: <strong className="font-medium text-slate-400">Publish to LinkedIn</strong>{' '}
+            posts caption + hero via Community Management API. Copy/download remains available as a
+            fallback. Caption stays in sync with body copy when you use Edit content.
           </p>
           {linkedInQueue.length > 0 && (
             <p className="mt-1 text-xs text-slate-500">
