@@ -15,6 +15,9 @@ import {
   AlertTriangle,
   ExternalLink,
   Trash2,
+  Pencil,
+  Save,
+  X,
 } from 'lucide-react';
 import {
   getCampaign,
@@ -32,6 +35,7 @@ import {
   getAuditLog,
   syncCampaignMetrics,
   getMarketingSettings,
+  updateCampaign,
   parseAutoSendTrustedTypes,
   EMAIL_TONE_OPTIONS,
   parseEmailTone,
@@ -46,15 +50,97 @@ interface Props {
   password: string;
 }
 
-function getHeroImageUrl(campaign: MarketingCampaign, queue: unknown[]): string | null {
-  const fromQueue = (queue[0] as { image_url?: string | null } | undefined)?.image_url;
-  return campaign.image_asset_url ?? campaign.canva_export_url ?? fromQueue ?? null;
+interface ContentDraft {
+  title: string;
+  internal_summary: string;
+  email_subject: string;
+  preview_text: string;
+  /** Single shared body copy — drives email + LinkedIn on save. */
+  body_copy: string;
+  call_to_action: string;
+}
+
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** Always return tag-free copy for the plain-text editor. */
+function toPlainBodyCopy(value: string): string {
+  if (!value.trim()) return '';
+  // Strip tags even when the stored "plain" fragment accidentally includes HTML
+  if (/<[^>]+>/.test(value)) return htmlToPlainText(value);
+  return value.replace(/\r\n/g, '\n').trim();
+}
+
+function getBodyFragment(campaign: MarketingCampaign): string {
+  const frag = campaign.metadata?.email_body_fragment;
+  if (typeof frag === 'string' && frag.trim()) return frag;
+  return '';
+}
+
+function getTextFragment(campaign: MarketingCampaign): string {
+  const frag = campaign.metadata?.email_text_fragment;
+  if (typeof frag === 'string' && frag.trim()) {
+    return toPlainBodyCopy(frag);
+  }
+  // Strip AE merge block from stored plain text for cleaner editing
+  const full = campaign.email_text ?? '';
+  const aeIdx = full.indexOf('Your Dedicated Account Executive');
+  const fromEmail = aeIdx > 0 ? full.slice(0, aeIdx).trim() : full.trim();
+  if (fromEmail) return toPlainBodyCopy(fromEmail);
+  const htmlFrag = getBodyFragment(campaign);
+  return htmlFrag ? htmlToPlainText(htmlFrag) : '';
+}
+
+function getCallToAction(campaign: MarketingCampaign): string {
+  const cta = campaign.metadata?.call_to_action;
+  return typeof cta === 'string' && cta.trim() ? cta : 'Visit PRO Portal';
+}
+
+function campaignToDraft(campaign: MarketingCampaign): ContentDraft {
+  return {
+    title: campaign.title ?? '',
+    internal_summary: campaign.internal_summary ?? '',
+    email_subject: campaign.email_subject ?? '',
+    preview_text: campaign.preview_text ?? '',
+    body_copy: getTextFragment(campaign),
+    call_to_action: getCallToAction(campaign),
+  };
+}
+
+function draftsEqual(a: ContentDraft, b: ContentDraft): boolean {
+  return (
+    a.title === b.title &&
+    a.internal_summary === b.internal_summary &&
+    a.email_subject === b.email_subject &&
+    a.preview_text === b.preview_text &&
+    a.body_copy === b.body_copy &&
+    a.call_to_action === b.call_to_action
+  );
 }
 
 async function fetchImageBlob(url: string): Promise<Blob> {
   const res = await fetch(url);
   if (!res.ok) throw new Error('Could not load image');
   return res.blob();
+}
+
+function getHeroImageUrl(campaign: MarketingCampaign, queue: unknown[]): string | null {
+  const fromQueue = (queue[0] as { image_url?: string | null } | undefined)?.image_url;
+  return campaign.image_asset_url ?? campaign.canva_export_url ?? fromQueue ?? null;
 }
 
 export default function CampaignDetail({ password }: Props) {
@@ -69,6 +155,9 @@ export default function CampaignDetail({ password }: Props) {
   const [linkedInQueue, setLinkedInQueue] = useState<unknown[]>([]);
   const [settingsListId, setSettingsListId] = useState('');
   const [autoSendTrustedTypes, setAutoSendTrustedTypes] = useState<string[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<ContentDraft | null>(null);
+  const [savedDraft, setSavedDraft] = useState<ContentDraft | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -83,6 +172,15 @@ export default function CampaignDetail({ password }: Props) {
       ]);
       if (campaignResult.error) setError(campaignResult.error);
       setCampaign(campaignResult.campaign);
+      if (campaignResult.campaign) {
+        const next = campaignToDraft(campaignResult.campaign);
+        setSavedDraft(next);
+        setDraft((prev) => {
+          // Preserve unsaved edits while the editor is open
+          if (editing && prev) return prev;
+          return next;
+        });
+      }
       setLogs(auditResult.logs);
       if (auditResult.error && !campaignResult.error) setError(auditResult.error);
       setLinkedInQueue(queue);
@@ -96,7 +194,7 @@ export default function CampaignDetail({ password }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [password, id]);
+  }, [password, id, editing]);
 
   useEffect(() => {
     void load();
@@ -114,6 +212,62 @@ export default function CampaignDetail({ password }: Props) {
       setSuccess(`${label} completed`);
       await load();
     }
+  }
+
+  function openEditor() {
+    if (!campaign) return;
+    const next = campaignToDraft(campaign);
+    setDraft(next);
+    setSavedDraft(next);
+    setEditing(true);
+    setError('');
+    setSuccess('');
+  }
+
+  function cancelEditor() {
+    if (draft && savedDraft && !draftsEqual(draft, savedDraft)) {
+      if (!window.confirm('Discard unsaved content changes?')) return;
+    }
+    setDraft(savedDraft);
+    setEditing(false);
+  }
+
+  async function saveContentEdits() {
+    if (!campaign || !draft) return;
+    if (!draft.email_subject.trim()) {
+      setError('Email subject is required.');
+      return;
+    }
+    if (!draft.body_copy.trim()) {
+      setError('Body copy is required. Edit the content before saving.');
+      return;
+    }
+    setBusy('Save content');
+    setError('');
+    setSuccess('');
+    const result = await updateCampaign(password, campaign.id, {
+      title: draft.title.trim(),
+      internal_summary: draft.internal_summary.trim(),
+      email_subject: draft.email_subject.trim(),
+      preview_text: draft.preview_text.trim(),
+      email_text_fragment: toPlainBodyCopy(draft.body_copy),
+      call_to_action: draft.call_to_action.trim() || 'Visit PRO Portal',
+      sync_linkedin_from_body: true,
+    });
+    setBusy('');
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setEditing(false);
+    setSuccess(
+      'Content saved — email and LinkedIn updated from the same copy. Review before creating the ActiveCampaign campaign.'
+    );
+    await load();
+  }
+
+  function updateDraftField<K extends keyof ContentDraft>(key: K, value: ContentDraft[K]) {
+    setDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
   }
 
   async function handleCopyLinkedIn() {
@@ -184,6 +338,9 @@ export default function CampaignDetail({ password }: Props) {
   const canDelete = ['draft', 'pending_approval', 'approved', 'failed', 'cancelled'].includes(
     campaign.status
   );
+  const canEditContent = ['draft', 'pending_approval', 'approved', 'failed', 'sent', 'scheduled'].includes(
+    campaign.status
+  );
   const sendCheck = canSendCampaign(
     campaign.status,
     campaign.approval_required,
@@ -211,6 +368,8 @@ export default function CampaignDetail({ password }: Props) {
     typeof campaign.metadata?.landing_page_skip_reason === 'string'
       ? campaign.metadata.landing_page_skip_reason
       : null;
+  const contentDirty = !!(editing && draft && savedDraft && !draftsEqual(draft, savedDraft));
+  const hasBodyCopy = !!getTextFragment(campaign);
 
   return (
     <div className="space-y-6">
@@ -257,6 +416,10 @@ export default function CampaignDetail({ password }: Props) {
                   label="Approve"
                   busy={busy}
                   onClick={() => {
+                    if (contentDirty) {
+                      setError('Save or discard content edits before approving.');
+                      return;
+                    }
                     if (
                       !window.confirm(
                         'Approve this campaign? This will publish the uff.pro landing page and update email/LinkedIn links.'
@@ -287,6 +450,10 @@ export default function CampaignDetail({ password }: Props) {
                 label={isResend ? 'Resend via AC' : 'Send via AC'}
                 busy={busy}
                 onClick={() => {
+                  if (contentDirty) {
+                    setError('Save or discard content edits before sending to ActiveCampaign.');
+                    return;
+                  }
                   const msg = isResend
                     ? 'Create a new ActiveCampaign send with this campaign content? Uses your current Settings list.'
                     : 'Send this campaign through ActiveCampaign?';
@@ -415,6 +582,9 @@ export default function CampaignDetail({ password }: Props) {
         )}
 
         <div className="mt-6 flex flex-wrap gap-2">
+          {canEditContent && !editing && (
+            <SmallBtn icon={Pencil} label="Edit content" busy={busy} onClick={openEditor} />
+          )}
           <SmallBtn
             icon={RefreshCw}
             label="Regen subject"
@@ -443,7 +613,13 @@ export default function CampaignDetail({ password }: Props) {
             icon={Mail}
             label="AC draft"
             busy={busy}
-            onClick={() => runAction('AC draft', () => createActiveCampaignDraft(password, campaign.id))}
+            onClick={() => {
+              if (contentDirty) {
+                setError('Save or discard content edits before creating an ActiveCampaign draft.');
+                return;
+              }
+              void runAction('AC draft', () => createActiveCampaignDraft(password, campaign.id));
+            }}
           />
           <SmallBtn
             icon={RefreshCw}
@@ -466,7 +642,7 @@ export default function CampaignDetail({ password }: Props) {
             </label>
             <button
               type="button"
-              disabled={!scheduleAt || !!busy}
+              disabled={!scheduleAt || !!busy || contentDirty}
               onClick={() =>
                 runAction('Schedule', () =>
                   scheduleCampaign(password, campaign.id, new Date(scheduleAt).toISOString())
@@ -479,6 +655,104 @@ export default function CampaignDetail({ password }: Props) {
           </div>
         )}
       </section>
+
+      {editing && draft && (
+        <section className="rounded-2xl border border-indigo-700/40 bg-slate-900/70 p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="flex items-center gap-2 font-semibold text-indigo-200">
+                <Pencil className="h-4 w-4" />
+                Edit content before ActiveCampaign
+              </h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Edit plain-text body copy once (no HTML tags). Saving rebuilds the email and copies
+                that same wording into the LinkedIn caption (hashtags and links are kept).
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={!!busy}
+                onClick={cancelEditor}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-600 px-3 py-2 text-sm hover:bg-slate-800 disabled:opacity-50"
+              >
+                <X className="h-4 w-4" />
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!!busy || !contentDirty}
+                onClick={() => void saveContentEdits()}
+                className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {busy === 'Save content' ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Save content
+              </button>
+            </div>
+          </div>
+
+          {!hasBodyCopy && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/90">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>No body copy found yet. Paste the campaign wording below, then save.</p>
+            </div>
+          )}
+
+          {contentDirty && (
+            <p className="mt-3 text-xs text-amber-300/90">
+              Unsaved changes — save before Approve, AC draft, or Send so ActiveCampaign gets your edits.
+            </p>
+          )}
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <EditField
+              label="Title (email heading)"
+              value={draft.title}
+              onChange={(v) => updateDraftField('title', v)}
+            />
+            <EditField
+              label="CTA button label"
+              value={draft.call_to_action}
+              onChange={(v) => updateDraftField('call_to_action', v)}
+            />
+            <EditField
+              label="Email subject"
+              value={draft.email_subject}
+              onChange={(v) => updateDraftField('email_subject', v)}
+            />
+            <EditField
+              label="Preview / preheader text"
+              value={draft.preview_text}
+              onChange={(v) => updateDraftField('preview_text', v)}
+            />
+          </div>
+
+          <div className="mt-4">
+            <EditField
+              label="Internal summary"
+              value={draft.internal_summary}
+              onChange={(v) => updateDraftField('internal_summary', v)}
+              multiline
+              rows={2}
+            />
+          </div>
+
+          <div className="mt-4">
+            <EditField
+              label="Body copy (plain text)"
+              hint="No HTML — edit the wording only. Use a blank line between paragraphs. On save, the branded email HTML and LinkedIn caption are rebuilt from this text."
+              value={draft.body_copy}
+              onChange={(v) => updateDraftField('body_copy', v)}
+              multiline
+              rows={16}
+            />
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <PreviewPanel title="Email preview" icon={Mail}>
@@ -562,6 +836,7 @@ export default function CampaignDetail({ password }: Props) {
           </div>
           <p className="mt-3 text-xs text-slate-500">
             Manual post: copy caption → paste in LinkedIn → add media (copy or download image) → post.
+            Caption stays in sync with body copy when you use Edit content.
           </p>
           {linkedInQueue.length > 0 && (
             <p className="mt-1 text-xs text-slate-500">
@@ -604,6 +879,49 @@ export default function CampaignDetail({ password }: Props) {
         </ul>
       </section>
     </div>
+  );
+}
+
+function EditField({
+  label,
+  value,
+  onChange,
+  hint,
+  multiline,
+  rows = 3,
+  mono,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  hint?: string;
+  multiline?: boolean;
+  rows?: number;
+  mono?: boolean;
+}) {
+  const fieldClass = `mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none ${
+    mono ? 'font-mono text-xs leading-relaxed' : ''
+  }`;
+  return (
+    <label className="block text-sm text-slate-300">
+      <span className="font-medium text-slate-200">{label}</span>
+      {hint && <span className="mt-0.5 block text-xs font-normal text-slate-500">{hint}</span>}
+      {multiline ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={rows}
+          className={fieldClass}
+        />
+      ) : (
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={fieldClass}
+        />
+      )}
+    </label>
   );
 }
 

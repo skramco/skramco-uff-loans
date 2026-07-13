@@ -7,7 +7,7 @@ export const LINKEDIN_PRO_PORTAL_PLACEHOLDER = "{{PRO_PORTAL_URL}}";
 
 const URL_RE = /https?:\/\/[^\s]+/g;
 
-function isHashtagLine(line: string): boolean {
+export function isHashtagLine(line: string): boolean {
   const t = line.trim();
   if (!t) return false;
   const tags = t.match(/#[A-Za-z0-9_]+/g) ?? [];
@@ -15,6 +15,30 @@ function isHashtagLine(line: string): boolean {
   if (tags.length >= 2) return true;
   if (tags.length >= 1 && nonTag.length < 20) return true;
   return t.startsWith("#") && nonTag.length === 0;
+}
+
+/** Keep existing hashtag lines when rebuilding a caption from edited body copy. */
+export function extractHashtagBlock(linkedin: string): string {
+  return linkedin
+    .split("\n")
+    .filter((line) => isHashtagLine(line))
+    .map((line) => line.trim())
+    .join("\n")
+    .trim();
+}
+
+/**
+ * Build LinkedIn caption from shared body copy (email plain text).
+ * Preserves hashtags from the previous LinkedIn post when present.
+ */
+export function deriveLinkedInFromBodyCopy(
+  bodyCopy: string,
+  existingLinkedIn: string | null | undefined,
+  opts: { landingUrl?: string; proPortalUrl?: string } = {}
+): string {
+  const hashtags = existingLinkedIn ? extractHashtagBlock(existingLinkedIn) : "";
+  const raw = hashtags ? `${bodyCopy.trim()}\n\n${hashtags}` : bodyCopy.trim();
+  return formatLinkedInCaption(raw, opts);
 }
 
 /**
