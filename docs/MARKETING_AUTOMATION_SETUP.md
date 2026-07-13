@@ -67,12 +67,11 @@ Set via `npx supabase secrets set`:
 
 | Variable | Description |
 |----------|-------------|
-| `LINKEDIN_CLIENT_ID` | LinkedIn app client ID |
-| `LINKEDIN_CLIENT_SECRET` | LinkedIn app secret |
-| `LINKEDIN_ACCESS_TOKEN` | Organization post access token |
-| `LINKEDIN_ORGANIZATION_ID` | Company page organization ID |
-| `LINKEDIN_AUTO_POST_ENABLED` | `true` or `false` |
-| `LINKEDIN_REQUIRE_APPROVAL` | `true` or `false` |
+| `LINKEDIN_CLIENT_ID` | LinkedIn app client ID (optional; for future OAuth refresh) |
+| `LINKEDIN_CLIENT_SECRET` | LinkedIn app secret (optional) |
+| `LINKEDIN_ACCESS_TOKEN` | Organization token with Community Management / `w_organization_social` |
+| `LINKEDIN_ORGANIZATION_ID` | Company page organization ID (numeric) |
+| `LINKEDIN_AUTO_POST_ENABLED` | `true` to force auto-post after email send (overrides DB when true) |
 
 ### Scheduler
 

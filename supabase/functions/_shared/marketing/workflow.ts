@@ -47,6 +47,17 @@ import {
 } from "./brokerGrowthTips.ts";
 import { DEFAULT_EMAIL_TONE, parseEmailTone, type EmailTone } from "./emailToneContext.ts";
 
+/** Prefer stored public asset URL, then Canva export. */
+export function resolveCampaignHeroUrl(campaign: {
+  image_asset_url?: string | null;
+  canva_export_url?: string | null;
+}): string | null {
+  const asset = campaign.image_asset_url?.trim();
+  if (asset) return asset;
+  const canva = campaign.canva_export_url?.trim();
+  return canva || null;
+}
+
 export async function runCampaignGeneration(
   supabase: SupabaseClient,
   opts: {
@@ -197,8 +208,12 @@ export async function publishLandingPageOnApproval(
     reason?: string;
   } = {};
 
+  const heroImageUrl = resolveCampaignHeroUrl(campaign);
+
   try {
-    landingMeta = await createAndPublishProLandingPage(campaignId, generated);
+    landingMeta = await createAndPublishProLandingPage(campaignId, generated, {
+      heroImageUrl,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Landing page publish failed";
     await logMarketingAction(repo, {
@@ -212,7 +227,7 @@ export async function publishLandingPageOnApproval(
 
   const finalized = finalizeGeneratedCampaign(generated, {
     ctaUrl: landingMeta.url,
-    heroImageUrl: campaign.image_asset_url ?? undefined,
+    heroImageUrl: heroImageUrl ?? undefined,
     attachLandingToLinkedIn: true,
   });
 
@@ -225,6 +240,7 @@ export async function publishLandingPageOnApproval(
     landing_page_github_commit: landingMeta.githubCommit,
     landing_page_skipped: landingMeta.skipped,
     landing_page_skip_reason: landingMeta.reason,
+    landing_page_hero_url: heroImageUrl,
   };
 
   const updated = await repo.updateCampaign(campaignId, {
@@ -237,12 +253,17 @@ export async function publishLandingPageOnApproval(
   const queue = await repo.getLinkedInQueue(campaignId);
   const queueRow = (queue as Array<{ id: string }>)[0];
   if (queueRow) {
-    await repo.updateLinkedInQueue(queueRow.id, { post_text: finalized.linkedin_post });
+    await repo.updateLinkedInQueue(queueRow.id, {
+      post_text: finalized.linkedin_post,
+      ...(heroImageUrl ? { image_url: heroImageUrl } : {}),
+    });
   }
 
-  if (landingMeta.slug && campaign.image_asset_url && !landingMeta.skipped) {
+  // Backup: if hero was missing at publish time, a later image gen will patch via landing_page_slug.
+  // If hero existed but first commit somehow lacked it, patch now.
+  if (landingMeta.slug && heroImageUrl && !landingMeta.skipped) {
     try {
-      await updateLandingPageHeroImage(landingMeta.slug, campaign.image_asset_url);
+      await updateLandingPageHeroImage(landingMeta.slug, heroImageUrl);
     } catch (e) {
       console.warn("Landing page hero update failed:", e);
     }
@@ -430,6 +451,10 @@ export async function runOpenAIImageGeneration(
     campaign.title ?? "UFF Marketing"
   );
 
+  const meta = campaign.metadata as Record<string, unknown> | undefined;
+  const landingSlug =
+    typeof meta?.landing_page_slug === "string" ? meta.landing_page_slug : undefined;
+
   await repo.updateCampaign(campaignId, {
     image_asset_url: imageAssetUrl,
     canva_export_url: generated.imageUrl ?? imageAssetUrl,
@@ -441,12 +466,10 @@ export async function runOpenAIImageGeneration(
         prompt: prompt.slice(0, 500),
         revisedPrompt: generated.revisedPrompt,
       },
+      ...(landingSlug ? { landing_page_hero_url: imageAssetUrl } : {}),
     },
   });
 
-  const meta = campaign.metadata as Record<string, unknown> | undefined;
-  const landingSlug =
-    typeof meta?.landing_page_slug === "string" ? meta.landing_page_slug : undefined;
   if (landingSlug) {
     try {
       await updateLandingPageHeroImage(landingSlug, imageAssetUrl);
@@ -551,6 +574,10 @@ export async function runCanvaDesign(
     campaign.title ?? "UFF Marketing"
   );
 
+  const meta = campaign.metadata as Record<string, unknown> | undefined;
+  const landingSlug =
+    typeof meta?.landing_page_slug === "string" ? meta.landing_page_slug : undefined;
+
   await repo.updateCampaign(campaignId, {
     canva_design_id: designId,
     canva_export_url: exported.exportUrl,
@@ -559,8 +586,17 @@ export async function runCanvaDesign(
     metadata: {
       ...(campaign.metadata as Record<string, unknown>),
       canva: { exportedAt: new Date().toISOString() },
+      ...(landingSlug ? { landing_page_hero_url: imageAssetUrl } : {}),
     },
   });
+
+  if (landingSlug && imageAssetUrl) {
+    try {
+      await updateLandingPageHeroImage(landingSlug, imageAssetUrl);
+    } catch (e) {
+      console.warn("Landing page hero update failed:", e);
+    }
+  }
 
   const queue = await repo.getLinkedInQueue(campaignId);
   const queueRow = (queue as Array<{ id: string }>)[0];
@@ -675,17 +711,21 @@ export async function runActiveCampaignSend(
 async function maybePublishLinkedIn(
   repo: MarketingRepository,
   campaignId: string,
-  campaign: { linkedin_post?: string | null; image_asset_url?: string | null }
+  campaign: {
+    linkedin_post?: string | null;
+    image_asset_url?: string | null;
+    canva_export_url?: string | null;
+  }
 ): Promise<void> {
   const linkedinRequire = (await repo.getSetting("linkedin_require_approval")) !== false;
-  const autoPost = isLinkedInAutoPostEnabled();
+  const autoPost = await isLinkedInAutoPostEnabled((k) => repo.getSetting(k));
 
   if (!autoPost || linkedinRequire) return;
   if (!isLinkedInConfigured() || !campaign.linkedin_post) return;
 
   const result = await publishOrganizationPost({
     text: campaign.linkedin_post,
-    imageUrl: campaign.image_asset_url ?? undefined,
+    imageUrl: resolveCampaignHeroUrl(campaign) ?? undefined,
   });
 
   if (result.success) {

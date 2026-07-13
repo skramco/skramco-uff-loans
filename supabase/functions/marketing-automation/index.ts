@@ -25,6 +25,7 @@ import {
 import { parseEmailTone } from "../_shared/marketing/emailToneContext.ts";
 import {
   isLinkedInAutoPostEnabled,
+  isLinkedInConfigured,
   publishOrganizationPost,
 } from "../_shared/marketing/linkedInClient.ts";
 import { MarketingRepository } from "../_shared/marketing/repository.ts";
@@ -41,6 +42,7 @@ import {
   syncCampaignMetrics,
   approveCampaignWithLanding,
   deleteMarketingCampaign,
+  resolveCampaignHeroUrl,
 } from "../_shared/marketing/workflow.ts";
 
 const corsHeaders = {
@@ -362,12 +364,16 @@ Deno.serve(async (req: Request) => {
         const settings = await repo.getAllSettings();
         const effectiveListId = await resolveDefaultListId((k) => repo.getSetting(k));
         const acTimezone = await resolveActiveCampaignTimezone();
+        const linkedinAutoPost = await isLinkedInAutoPostEnabled((k) => repo.getSetting(k));
+        const linkedinConfigured = isLinkedInConfigured();
         const integrationStatus = {
           openai: !!Deno.env.get("OPENAI_API_KEY"),
           openaiImages: !!Deno.env.get("OPENAI_API_KEY"),
           activecampaign: !!(Deno.env.get("ACTIVECAMPAIGN_API_URL") && Deno.env.get("ACTIVECAMPAIGN_API_KEY")),
           canva: !!(Deno.env.get("CANVA_CLIENT_ID") || Deno.env.get("CANVA_ACCESS_TOKEN")),
-          linkedin: isLinkedInAutoPostEnabled(),
+          linkedin: linkedinConfigured,
+          linkedinConfigured,
+          linkedinAutoPost,
           defaultListId: effectiveListId ?? null,
           settingsListId: parseListId(settings.activecampaign_default_list_id) ?? null,
           envListId: getEnvDefaultListId() ?? null,
@@ -534,10 +540,17 @@ Deno.serve(async (req: Request) => {
       case "publishLinkedInPost": {
         const campaign = await repo.getCampaign(body.campaignId);
         if (!campaign?.linkedin_post) return errorResponse("No LinkedIn post content");
+        if (!isLinkedInConfigured()) {
+          return errorResponse(
+            "LinkedIn API not configured. Set LINKEDIN_ACCESS_TOKEN and LINKEDIN_ORGANIZATION_ID in Supabase Edge Function secrets.",
+            400
+          );
+        }
 
+        const heroUrl = resolveCampaignHeroUrl(campaign);
         const result = await publishOrganizationPost({
           text: campaign.linkedin_post,
-          imageUrl: campaign.image_asset_url ?? undefined,
+          imageUrl: heroUrl ?? undefined,
         });
 
         const queue = await repo.getLinkedInQueue(body.campaignId);
@@ -547,6 +560,7 @@ Deno.serve(async (req: Request) => {
             status: result.success ? "published" : "failed",
             published_at: result.success ? new Date().toISOString() : null,
             publish_result: result.raw,
+            ...(heroUrl ? { image_url: heroUrl } : {}),
           });
         }
 
@@ -554,10 +568,25 @@ Deno.serve(async (req: Request) => {
           campaignId: body.campaignId,
           action: result.success ? "linkedin_published" : "linkedin_publish_failed",
           actorType: "user",
-          details: { error: result.error },
+          details: {
+            error: result.error,
+            postId: result.postId,
+            imageUrn: result.imageUrn,
+            hadHeroImage: !!heroUrl,
+          },
         });
 
-        return jsonResponse({ success: result.success, result });
+        if (!result.success) {
+          return errorResponse(result.error || "LinkedIn publish failed", 400);
+        }
+
+        return jsonResponse({
+          success: true,
+          result: {
+            postId: result.postId,
+            imageUrn: result.imageUrn,
+          },
+        });
       }
 
       case "markLinkedInPublished": {
@@ -605,12 +634,16 @@ Deno.serve(async (req: Request) => {
 
       case "getIntegrationStatus": {
         const approvalSettings = await loadApprovalSettings((k) => repo.getSetting(k));
+        const linkedinConfigured = isLinkedInConfigured();
+        const linkedinAutoPost = await isLinkedInAutoPostEnabled((k) => repo.getSetting(k));
         return jsonResponse({
           openai: !!Deno.env.get("OPENAI_API_KEY"),
           openaiImages: !!Deno.env.get("OPENAI_API_KEY"),
           activecampaign: !!(Deno.env.get("ACTIVECAMPAIGN_API_URL") && Deno.env.get("ACTIVECAMPAIGN_API_KEY")),
           canva: !!(Deno.env.get("CANVA_ACCESS_TOKEN") || Deno.env.get("CANVA_CLIENT_ID")),
-          linkedin: isLinkedInAutoPostEnabled(),
+          linkedin: linkedinConfigured,
+          linkedinConfigured,
+          linkedinAutoPost,
           approvalSettings,
         });
       }

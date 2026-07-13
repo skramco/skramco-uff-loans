@@ -161,7 +161,7 @@ export default function MarketingSettingsPage({ password }: Props) {
               ['OpenAI Images', integrationStatus.openaiImages ?? integrationStatus.openai],
               ['ActiveCampaign', integrationStatus.activecampaign],
               ['Canva', integrationStatus.canva],
-              ['LinkedIn auto-post', integrationStatus.linkedin],
+              ['LinkedIn API', integrationStatus.linkedinConfigured ?? integrationStatus.linkedin],
             ] as const
           ).map(([label, ok]) => (
             <div key={label} className="flex items-center justify-between rounded-lg border border-slate-800 px-4 py-3">
@@ -172,6 +172,27 @@ export default function MarketingSettingsPage({ password }: Props) {
             </div>
           ))}
         </dl>
+        {!!(integrationStatus.linkedinConfigured ?? integrationStatus.linkedin) && (
+          <p className="mt-3 text-xs text-slate-500">
+            LinkedIn Community Management API is connected. Use{' '}
+            <strong className="font-medium text-slate-300">Publish to LinkedIn</strong> on a campaign
+            to post caption + hero image. Auto-post after email send is{' '}
+            {integrationStatus.linkedinAutoPost ? (
+              <span className="text-emerald-400">enabled</span>
+            ) : (
+              <span className="text-slate-400">off</span>
+            )}{' '}
+            (toggle below).
+          </p>
+        )}
+        {!(integrationStatus.linkedinConfigured ?? integrationStatus.linkedin) && (
+          <p className="mt-3 text-xs text-amber-200/80">
+            To enable LinkedIn publishing, set{' '}
+            <code className="text-amber-200">LINKEDIN_ACCESS_TOKEN</code> and{' '}
+            <code className="text-amber-200">LINKEDIN_ORGANIZATION_ID</code> in Supabase Edge Function
+            secrets (Community Management API scopes required).
+          </p>
+        )}
         {effectiveListId && (
           <p className="mt-4 text-sm text-slate-400">
             Effective send list:{' '}
@@ -292,8 +313,13 @@ export default function MarketingSettingsPage({ password }: Props) {
               onChange={(e) => setLinkedinAuto(e.target.checked)}
               className="rounded border-slate-600"
             />
-            LinkedIn auto-post enabled
+            LinkedIn auto-post after email send
           </label>
+          <p className="text-xs text-slate-500 -mt-2 ml-6">
+            When enabled (and approval below is off), a successful ActiveCampaign send also publishes
+            the LinkedIn caption + hero via API. Manual <strong>Publish to LinkedIn</strong> on
+            campaign detail always works when the API is connected.
+          </p>
 
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -302,7 +328,7 @@ export default function MarketingSettingsPage({ password }: Props) {
               onChange={(e) => setLinkedinApproval(e.target.checked)}
               className="rounded border-slate-600"
             />
-            LinkedIn requires approval
+            LinkedIn requires manual approval (blocks auto-post)
           </label>
 
           {saveMessage && (
