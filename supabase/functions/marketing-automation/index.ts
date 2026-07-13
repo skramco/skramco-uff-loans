@@ -18,7 +18,10 @@ import {
   loadTokensFromSettings,
   refreshCanvaToken,
 } from "../_shared/marketing/canvaClient.ts";
-import { regenerateField } from "../_shared/marketing/campaignGenerator.ts";
+import {
+  buildManualContentPatch,
+  regenerateField,
+} from "../_shared/marketing/campaignGenerator.ts";
 import { parseEmailTone } from "../_shared/marketing/emailToneContext.ts";
 import {
   isLinkedInAutoPostEnabled,
@@ -169,14 +172,54 @@ Deno.serve(async (req: Request) => {
         const campaign = await repo.getCampaign(body.campaignId);
         if (!campaign) return errorResponse("Campaign not found", 404);
 
+        const contentEditKeys = [
+          "title",
+          "internal_summary",
+          "email_subject",
+          "preview_text",
+          "email_body_fragment",
+          "email_text_fragment",
+          "linkedin_post",
+          "canva_prompt",
+          "call_to_action",
+          "sync_linkedin_from_body",
+        ] as const;
+        const hasContentEdits = contentEditKeys.some((k) => body[k] !== undefined);
+
+        let patch: Record<string, unknown>;
+        if (hasContentEdits) {
+          // Rebuild branded HTML from body fragment so subject/body edits stay in sync.
+          patch = buildManualContentPatch(campaign, {
+            title: body.title,
+            internal_summary: body.internal_summary,
+            email_subject: body.email_subject,
+            preview_text: body.preview_text,
+            email_body_fragment: body.email_body_fragment,
+            email_text_fragment: body.email_text_fragment,
+            linkedin_post: body.linkedin_post,
+            canva_prompt: body.canva_prompt,
+            call_to_action: body.call_to_action,
+            sync_linkedin_from_body: body.sync_linkedin_from_body,
+          });
+        } else {
+          patch = {};
+        }
+
         const allowed = [
           "title", "internal_summary", "email_subject", "preview_text",
           "email_html", "email_text", "linkedin_post", "canva_prompt",
           "canva_template_id", "activecampaign_list_id", "scheduled_send_at",
         ];
-        const patch: Record<string, unknown> = {};
         for (const k of allowed) {
-          if (body[k] !== undefined) patch[k] = body[k];
+          // Direct HTML overrides only when not doing a fragment rebuild.
+          if (!hasContentEdits && body[k] !== undefined) patch[k] = body[k];
+          if (hasContentEdits && (k === "activecampaign_list_id" || k === "scheduled_send_at" || k === "canva_template_id") && body[k] !== undefined) {
+            patch[k] = body[k];
+          }
+        }
+
+        if (Object.keys(patch).length === 0) {
+          return errorResponse("No updatable fields provided");
         }
 
         const updated = await repo.updateCampaign(body.campaignId, patch);
@@ -184,7 +227,7 @@ Deno.serve(async (req: Request) => {
           campaignId: body.campaignId,
           action: "campaign_updated",
           actorType: "user",
-          details: { fields: Object.keys(patch) },
+          details: { fields: Object.keys(patch), manualContentEdit: hasContentEdits },
         });
         return jsonResponse({ success: true, campaign: updated });
       }
@@ -237,6 +280,15 @@ Deno.serve(async (req: Request) => {
         } else if (field === "email_html") {
           dbPatch.email_html = patch.email_html;
           dbPatch.email_text = patch.email_text;
+          const bodyFrag = (patch as Record<string, unknown>).email_body_fragment;
+          const textFrag = (patch as Record<string, unknown>).email_text_fragment;
+          if (typeof bodyFrag === "string" || typeof textFrag === "string") {
+            dbPatch.metadata = {
+              ...meta,
+              ...(typeof bodyFrag === "string" ? { email_body_fragment: bodyFrag } : {}),
+              ...(typeof textFrag === "string" ? { email_text_fragment: textFrag } : {}),
+            };
+          }
         }
 
         const updated = await repo.updateCampaign(body.campaignId, dbPatch);

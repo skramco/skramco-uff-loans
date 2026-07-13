@@ -10,7 +10,7 @@ import { computeApprovalRequired, loadApprovalSettings } from "./approvalRules.t
 import { parseListId, resolveDefaultListId } from "./activeCampaignClient.ts";
 import type { MarketingRepository } from "./repository.ts";
 import type { CampaignType, GeneratedCampaignContent, MarketingTemplateRow } from "./types.ts";
-import { finalizeCampaignEmail, appendAccountExecutivePlainText } from "./uffEmailTemplate.ts";
+import { finalizeCampaignEmail, appendAccountExecutivePlainText, htmlFragmentToPlainText, plainTextToEmailBodyHtml } from "./uffEmailTemplate.ts";
 import {
   rewriteBodyLinksForLanding,
   rewritePlainTextLinksForLanding,
@@ -33,7 +33,7 @@ import {
   getDailyBriefingDatePromptBlock,
 } from "./mortgageNewsRssContext.ts";
 import { PRO_PORTAL_PRODUCT_CONTEXT, PRO_PORTAL_PUBLIC_PAGE_URL, needsProPortalContext } from "./proPortalContext.ts";
-import { formatLinkedInCaption } from "./linkedinPostFormat.ts";
+import { deriveLinkedInFromBodyCopy, formatLinkedInCaption } from "./linkedinPostFormat.ts";
 import { getLinkedInHashtagHints, LINKEDIN_POST_GUIDANCE } from "./linkedinPostGuidance.ts";
 import { CANVA_PROMPT_GUIDANCE } from "./marketingImageGuidance.ts";
 import {
@@ -458,6 +458,178 @@ export async function regenerateField(
     );
     patch.email_html = finalized.email_html;
     patch.email_text = finalized.email_text;
+    // Preserve raw fragments for manual "Edit content" (not part of GeneratedCampaignContent columns)
+    (patch as Record<string, unknown>).email_body_fragment = bodyFragment;
+    (patch as Record<string, unknown>).email_text_fragment = String(parsed.email_text ?? "");
+  }
+
+  return patch;
+}
+
+export type ManualCampaignContentEdits = {
+  title?: string;
+  internal_summary?: string;
+  email_subject?: string;
+  preview_text?: string;
+  /** Body fragment only (paragraphs / boxes) — not the full UFF shell. */
+  email_body_fragment?: string;
+  /** Shared plain-text body copy — source of truth for email text + LinkedIn. */
+  email_text_fragment?: string;
+  linkedin_post?: string;
+  canva_prompt?: string;
+  call_to_action?: string;
+  /** When true (default if body copy changes), LinkedIn is rebuilt from body copy. */
+  sync_linkedin_from_body?: boolean;
+};
+
+/**
+ * Apply user content edits and rebuild the branded email HTML from the body fragment.
+ * Keeps hero image + landing CTA when present.
+ * Body copy is edited once: plain text drives email HTML + LinkedIn caption.
+ */
+export function buildManualContentPatch(
+  campaign: {
+    campaign_type: string;
+    title?: string | null;
+    internal_summary?: string | null;
+    email_subject?: string | null;
+    preview_text?: string | null;
+    email_html?: string | null;
+    email_text?: string | null;
+    linkedin_post?: string | null;
+    canva_prompt?: string | null;
+    compliance_risk_score?: number | null;
+    approval_required?: boolean;
+    image_asset_url?: string | null;
+    canva_export_url?: string | null;
+    metadata?: Record<string, unknown> | null;
+  },
+  edits: ManualCampaignContentEdits
+): Record<string, unknown> {
+  const meta = { ...(campaign.metadata ?? {}) } as Record<string, unknown>;
+  const existingBodyFragment =
+    typeof meta.email_body_fragment === "string" ? meta.email_body_fragment : null;
+  const existingTextFragment =
+    typeof meta.email_text_fragment === "string" ? meta.email_text_fragment : null;
+
+  const title = edits.title !== undefined ? edits.title : (campaign.title ?? "UFF Update");
+  const internalSummary =
+    edits.internal_summary !== undefined
+      ? edits.internal_summary
+      : (campaign.internal_summary ?? "");
+  const emailSubject =
+    edits.email_subject !== undefined ? edits.email_subject : (campaign.email_subject ?? "");
+  const previewText =
+    edits.preview_text !== undefined ? edits.preview_text : (campaign.preview_text ?? "");
+  const canvaPrompt =
+    edits.canva_prompt !== undefined ? edits.canva_prompt : (campaign.canva_prompt ?? "");
+  const callToAction =
+    edits.call_to_action !== undefined
+      ? edits.call_to_action
+      : typeof meta.call_to_action === "string"
+        ? meta.call_to_action
+        : "Visit PRO Portal";
+
+  // Single source of truth: plain body copy. HTML fragment is derived when only text is sent.
+  const bodyCopyChanged = edits.email_text_fragment !== undefined;
+  const htmlFragmentChanged = edits.email_body_fragment !== undefined;
+
+  let textFragment: string;
+  let bodyFragment: string;
+
+  if (bodyCopyChanged) {
+    const rawCopy = String(edits.email_text_fragment ?? "").trim();
+    textFragment = /<[^>]+>/.test(rawCopy) ? htmlFragmentToPlainText(rawCopy) : rawCopy;
+    bodyFragment = plainTextToEmailBodyHtml(textFragment);
+  } else if (htmlFragmentChanged) {
+    bodyFragment = String(edits.email_body_fragment ?? "");
+    textFragment = htmlFragmentToPlainText(bodyFragment);
+  } else {
+    textFragment = existingTextFragment ?? campaign.email_text ?? "";
+    bodyFragment = existingBodyFragment ?? "";
+  }
+
+  const landingUrl =
+    typeof meta.landing_page_url === "string" && meta.landing_page_url
+      ? meta.landing_page_url
+      : PRO_PORTAL_PUBLIC_PAGE_URL;
+
+  const shouldSyncLinkedIn =
+    edits.sync_linkedin_from_body === true ||
+    (edits.sync_linkedin_from_body !== false &&
+      edits.linkedin_post === undefined &&
+      (bodyCopyChanged || htmlFragmentChanged));
+
+  let linkedinPost: string;
+  if (edits.linkedin_post !== undefined && !shouldSyncLinkedIn) {
+    linkedinPost = edits.linkedin_post;
+  } else if (shouldSyncLinkedIn) {
+    linkedinPost = deriveLinkedInFromBodyCopy(textFragment, campaign.linkedin_post, {
+      landingUrl:
+        typeof meta.landing_page_url === "string" && meta.landing_page_url
+          ? meta.landing_page_url
+          : undefined,
+      proPortalUrl: PRO_PORTAL_PUBLIC_PAGE_URL,
+    });
+  } else {
+    linkedinPost = campaign.linkedin_post ?? "";
+  }
+
+  const shouldRebuildEmail =
+    bodyCopyChanged ||
+    htmlFragmentChanged ||
+    edits.call_to_action !== undefined ||
+    edits.title !== undefined ||
+    edits.email_subject !== undefined ||
+    edits.preview_text !== undefined;
+
+  const patch: Record<string, unknown> = {
+    title,
+    internal_summary: internalSummary,
+    email_subject: emailSubject,
+    preview_text: previewText,
+    linkedin_post: linkedinPost,
+    canva_prompt: canvaPrompt,
+  };
+
+  if (shouldRebuildEmail && (bodyFragment.trim() || textFragment.trim())) {
+    const fragmentForEmail = bodyFragment.trim()
+      ? bodyFragment
+      : plainTextToEmailBodyHtml(textFragment);
+    const heroImageUrl = campaign.image_asset_url ?? campaign.canva_export_url ?? undefined;
+    const finalized = finalizeGeneratedCampaign(
+      {
+        campaign_type: campaign.campaign_type as CampaignType,
+        title,
+        internal_summary: internalSummary,
+        email_subject: emailSubject,
+        preview_text: previewText,
+        email_html: fragmentForEmail,
+        email_text: textFragment,
+        linkedin_post: linkedinPost,
+        canva_prompt: canvaPrompt,
+        call_to_action: callToAction,
+        compliance_risk_score: campaign.compliance_risk_score ?? 0.3,
+        approval_required: campaign.approval_required ?? true,
+      },
+      {
+        ctaUrl: landingUrl,
+        heroImageUrl: heroImageUrl ?? undefined,
+        attachLandingToLinkedIn: false,
+      }
+    );
+    patch.email_html = finalized.email_html;
+    patch.email_text = finalized.email_text;
+    meta.email_body_fragment = fragmentForEmail;
+    meta.email_text_fragment = textFragment;
+    meta.call_to_action = callToAction;
+    meta.content_edited_at = new Date().toISOString();
+    if (shouldSyncLinkedIn) meta.linkedin_synced_from_body = true;
+    patch.metadata = meta;
+  } else if (edits.call_to_action !== undefined || shouldSyncLinkedIn) {
+    if (edits.call_to_action !== undefined) meta.call_to_action = callToAction;
+    if (shouldSyncLinkedIn) meta.linkedin_synced_from_body = true;
+    patch.metadata = meta;
   }
 
   return patch;

@@ -78,6 +78,37 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** Strip tags from an HTML body fragment for plain-text editing / LinkedIn sync. */
+export function htmlFragmentToPlainText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, "\n\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** Wrap plain body copy into email paragraph HTML for the UFF shell. */
+export function plainTextToEmailBodyHtml(text: string): string {
+  return text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      const withBreaks = escapeHtml(block).replace(/\n/g, "<br/>");
+      return `<p style="font-family:Arial,sans-serif;font-size:15px;color:${UFF_EMAIL.textPrimary};margin:0 0 16px;line-height:1.7;">${withBreaks}</p>`;
+    })
+    .join("\n");
+}
+
 /** Strip accidental full-document HTML from AI body fragments. */
 export function extractEmailBodyFragment(raw: string): string {
   let html = raw.trim();

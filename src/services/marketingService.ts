@@ -195,10 +195,11 @@ export async function updateCampaign(
   password: string,
   campaignId: string,
   patch: Record<string, unknown>
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; campaign?: MarketingCampaign; error?: string }> {
   const response = await marketingFetch({ action: 'updateCampaign', password, campaignId, ...patch });
-  const { error } = await parseResponse(response);
-  return error ? { success: false, error } : { success: true };
+  const { data, error } = await parseResponse<{ campaign: MarketingCampaign }>(response);
+  if (error) return { success: false, error };
+  return { success: true, campaign: data?.campaign };
 }
 
 export async function regenerateField(
