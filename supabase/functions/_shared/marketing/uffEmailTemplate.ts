@@ -130,7 +130,7 @@ export function extractEmailBodyFragment(raw: string): string {
 export function buildHeroImageRow(imageUrl: string, alt: string): string {
   const safeAlt = escapeHtml(alt);
   const safeUrl = escapeHtml(imageUrl);
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
+  return `<table role="presentation" data-uff-hero="1" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
 <tr><td align="center">
 <img src="${safeUrl}" alt="${safeAlt}" width="520" style="max-width:100%;height:auto;display:block;border-radius:8px;" />
 </td></tr></table>`;
@@ -250,14 +250,21 @@ export function injectImageIntoHtml(
   alt: string
 ): string {
   const heroRow = buildHeroImageRow(imageUrl, alt);
-  if (html.includes(UFF_HERO_PLACEHOLDER)) {
-    return html.replace(UFF_HERO_PLACEHOLDER, heroRow);
-  }
-  const bodyOpen = html.match(/<td class="email-body"[^>]*>/);
+  const markedHeroRe =
+    /<table role="presentation"[^>]*data-uff-hero="1"[^>]*>[\s\S]*?<\/table>/gi;
+  const legacyHeroRe =
+    /<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">\s*<tr><td align="center">\s*<img[^>]*width="520"[^>]*>\s*<\/td><\/tr><\/table>/gi;
+
+  let next = html
+    .replaceAll(UFF_HERO_PLACEHOLDER, "")
+    .replace(markedHeroRe, "")
+    .replace(legacyHeroRe, "");
+
+  const bodyOpen = next.match(/<td class="email-body"[^>]*>/);
   if (bodyOpen) {
-    return html.replace(bodyOpen[0], `${bodyOpen[0]}${heroRow}`);
+    return next.replace(bodyOpen[0], `${bodyOpen[0]}${heroRow}`);
   }
-  return `${heroRow}\n${html}`;
+  return `${heroRow}\n${next}`;
 }
 
 export function finalizeCampaignEmail(

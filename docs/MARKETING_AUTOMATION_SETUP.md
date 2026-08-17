@@ -33,7 +33,7 @@ Set via `npx supabase secrets set`:
 
 | Variable | Description |
 |----------|-------------|
-| `ADMIN_PASSWORD` | Admin UI password (existing) |
+| `ADMIN_PASSWORD` | Still used by other uff.loans admin tools (e.g. Vesta ops). Marketing UI no longer uses it. |
 | `OPENAI_API_KEY` | OpenAI API key (copy + DALL-E images) |
 | `OPENAI_MODEL` | Optional, default `gpt-4o` |
 | `OPENAI_IMAGE_MODEL` | Optional, default `gpt-image-1` (use `dall-e-3` for legacy) |
@@ -99,14 +99,16 @@ The ProWebsiteUFF app must include the `/lp/[slug]` route (see `ProWebsiteUFF/ap
 
 ## Admin UI
 
-Routes (password-gated, same as existing admin):
+The marketing admin UI lives in **ProPortal** (Lender Admin only): `/lender/marketing`.
 
-- `/admin/marketing` — overview and quick generate
-- `/admin/marketing/campaigns` — campaign list
-- `/admin/marketing/campaigns/:id` — preview, approve, send
-- `/admin/marketing/templates` — template and Canva ID config
-- `/admin/marketing/settings` — approval thresholds, **ActiveCampaign list picker** (testing 34 vs marketing 21), LinkedIn flags
-- `/admin/marketing/metrics` — performance dashboard
+- `/lender/marketing` — overview and quick generate
+- `/lender/marketing/campaigns` — campaign list
+- `/lender/marketing/campaigns/:id` — preview, approve, send
+- `/lender/marketing/templates` — template and Canva ID config
+- `/lender/marketing/settings` — approval thresholds, **ActiveCampaign list picker** (testing 34 vs marketing 21), LinkedIn flags
+- `/lender/marketing/metrics` — performance dashboard
+
+Access is ProPortal **Admin / Lender Admin** login. Cron, generation, ActiveCampaign, and LinkedIn behavior are unchanged.
 
 ## Scheduler (cron)
 
@@ -143,7 +145,8 @@ Schedules are configurable in `marketing_settings` via admin Settings UI.
 Campaign copy is generated as **broker intelligence**, not generic lender marketing. Every email should help wholesale brokers identify, structure, rescue, submit, close, or grow pipeline.
 
 - **System prompt:** `brokerIntelligenceContext.ts` + `complianceGuardrails.ts`
-- **Campaign types:** Loan Rescue, Scenario Desk, Market Intelligence, Processing & Operations, Compliance & Guidelines, plus product spotlights (Conventional, FHA, VA, USDA, Non-QM, Jumbo)
+- **Campaign types (scheduled):** Loan Rescue, Scenario Desk, Market Intelligence, Processing & Operations, Compliance & Guidelines, plus product spotlights (Conventional, FHA, VA, USDA, Non-QM, Jumbo)
+- **Manual generate (ProPortal):** operator **Input Prompt** drives the campaign; email tone still applies. Asset depletion is a niche Non-QM lane — do not default to it.
 - **Validation:** Heuristic check + one automatic regeneration if content is too short or reads like fluff; `low_broker_intelligence` flag raises approval risk
 - **Daily market briefing:** Same-day headlines from [Mortgage News Daily](https://www.mortgagenewsdaily.com/rss/full), [HousingWire](https://www.housingwire.com/mortgage/feed/), [National Mortgage News](https://www.nationalmortgagenews.com/feed), [MPA US](https://www.mpamag.com/us/rss), [IMF Originations](https://www.insidemortgagefinance.com/rss/topic/1580-originations) — **skipped** if nothing published today (ET). FRED is optional supplemental data.
 - **Other market campaigns:** FRED for market commentary, market intelligence, weekly newsletter
@@ -184,6 +187,9 @@ If that MCP server was added in Cursor, remove it under **Cursor Settings → MC
 ## Testing
 
 ```bash
-npm test          # Vitest — compliance guardrails, approval rules
-npm run test:deno # Deno tests for shared marketing modules
+# ProPortal (moved UI compliance helpers)
+cd pro-app && npm test
+
+# LoansWebsiteUFF — Deno tests for shared marketing edge-function modules
+npm run test:deno
 ```

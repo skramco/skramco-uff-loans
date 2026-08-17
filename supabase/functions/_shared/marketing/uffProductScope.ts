@@ -4,7 +4,7 @@
 
 export const UFF_PRODUCT_SCOPE_PROMPT = `
 UFF PRODUCT SCOPE (wholesale — do not invent or imply products UFF does not offer):
-SUPPORTED: Conventional, FHA, VA, USDA, Non-QM (DSCR, bank statement, asset depletion, interest-only, foreign national, jumbo), streamline/refi expertise where UFF offers the program.
+SUPPORTED: Conventional, FHA, VA, USDA, Non-QM (DSCR, bank statement, interest-only, foreign national, jumbo; asset depletion as a niche lane only), streamline/refi expertise where UFF offers the program.
 
 NOT OFFERED BY UFF — never recommend, spotlight, structure, or imply UFF originates:
 - Construction loans, construction-to-perm, one-time-close construction, ground-up/spec construction financing, builder construction loan programs, or any interim construction draw products.

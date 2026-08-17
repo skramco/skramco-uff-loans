@@ -40,7 +40,7 @@ Do NOT use PRO Portal as a solution for broker marketing tactics (testimonials, 
 
 UFF WHOLESALE POSITIONING (supported language only):
 Competitive/aggressive pricing, strong product selection, execution, scenario desk support, operational consistency.
-Product families: Conventional, FHA, VA, USDA, Non-QM (DSCR, bank statement, asset depletion, interest-only, foreign national, jumbo), streamline expertise.
+Product families: Conventional, FHA, VA, USDA, Non-QM (DSCR, bank statement, interest-only, foreign national, jumbo; asset depletion as a niche lane only), streamline expertise.
 Never claim: best rates, lowest rates, guaranteed approval, fastest lender, or #1 lender.
 
 UFF is a wholesale lender — not a market research publisher. Do not claim UFF sends daily commentary or rate alert services.

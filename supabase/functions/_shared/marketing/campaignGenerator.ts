@@ -85,6 +85,8 @@ export interface GenerateOptions {
   marketDataSummary?: string | null;
   realTimeContext?: string | null;
   emailTone?: EmailTone;
+  /** Operator-written assignment; when set, this drives campaign substance. */
+  customPrompt?: string;
 }
 
 function parseGeneratedJson(raw: string): Record<string, unknown> {
@@ -95,13 +97,22 @@ function parseGeneratedJson(raw: string): Record<string, unknown> {
 }
 
 export function buildUserPrompt(options: GenerateOptions): string {
+  const customPrompt = options.customPrompt?.trim();
+  const isCustom = options.campaignType === "custom_prompt" || Boolean(customPrompt);
   const parts: string[] = [getCampaignTypeIntelligence(options.campaignType)];
 
-  if (PRODUCT_INTELLIGENCE_TYPES.has(options.campaignType)) {
+  if (isCustom || PRODUCT_INTELLIGENCE_TYPES.has(options.campaignType)) {
     parts.push(`\n${UFF_WHOLESALE_PRODUCT_MENU}`);
   }
 
-  if (options.template?.prompt_user) {
+  if (isCustom && customPrompt) {
+    parts.push(
+      `OPERATOR PROMPT (primary assignment — this drives the campaign topic, audience, and angle):\n${customPrompt}`
+    );
+    if (options.template?.prompt_user) {
+      parts.push(`Additional template instructions:\n${options.template.prompt_user}`);
+    }
+  } else if (options.template?.prompt_user) {
     parts.push(`Template instructions:\n${options.template.prompt_user}`);
   } else {
     parts.push(`Generate a ${options.campaignType} marketing campaign.`);
@@ -241,7 +252,7 @@ export async function generateCampaignContent(
         email_text: draft.email_text,
         internal_summary: draft.internal_summary,
       },
-      { campaignType: options.campaignType }
+      { campaignType: options.campaignType, customPrompt: options.customPrompt }
     );
     const toneCheck = evaluateToneDelivery(emailTone, draft);
     if ((edu.passes && toneCheck.passes) || attempt === 2) {

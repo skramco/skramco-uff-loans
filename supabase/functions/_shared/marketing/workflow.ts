@@ -69,6 +69,7 @@ export async function runCampaignGeneration(
     tipBrief?: BrokerGrowthTip;
     skipImage?: boolean;
     emailTone?: EmailTone;
+    customPrompt?: string;
   }
 ): Promise<{ campaignId: string; content: GeneratedCampaignContent }> {
   const repo = new MarketingRepository(supabase);
@@ -95,6 +96,7 @@ export async function runCampaignGeneration(
       ? buildTipCampaignUserPrompt(opts.tipBrief)
       : undefined,
     emailTone,
+    customPrompt: opts.customPrompt,
   });
 
   const funnyWord = rawContent.funny_word;
@@ -137,6 +139,9 @@ export async function runCampaignGeneration(
       landing_page_status: "pending_approval",
       landing_page_url: null,
       landing_page_slug: null,
+      ...(opts.customPrompt?.trim()
+        ? { custom_prompt: opts.customPrompt.trim() }
+        : {}),
       growthTip: opts.tipBrief
         ? {
             tipNumber: opts.tipBrief.tipNumber,
