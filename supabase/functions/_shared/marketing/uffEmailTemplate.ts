@@ -19,12 +19,14 @@ export const UFF_EMAIL = {
   address: "1300 NW Briarcliff Pkwy #275, Kansas City, MO 64116",
   phone: "(855) 95-EAGLE",
   phoneTel: "+18559532453",
-  supportEmail: "support@uff.pro",
   siteUrl: "https://uff.loans",
   contactUrl: "https://uff.loans/contact",
   privacyUrl: "https://uff.loans/privacy-policy",
   loginUrl: "https://uff.loans/login",
   myLoanUrl: "https://uff.loans/my-loan",
+  wholesaleSiteUrl: "https://uff.pro",
+  wholesaleContactUrl: "https://uff.pro/contact",
+  wholesaleLicensingUrl: "https://uff.pro/licensing",
   portalUrl: "https://go.uff.pro",
   nmlsUrl:
     "https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/34381",
@@ -40,18 +42,29 @@ export const BORROWER_FOOTER_LINKS: UffFooterLink[] = [
   { href: UFF_EMAIL.loginUrl, label: "Sign in" },
 ];
 
-/** Marketing / broker-facing. PRO Portal is go.uff.pro (live login). */
+/** Marketing / broker-facing. Public site is uff.pro; PRO Portal is go.uff.pro. */
 export const MARKETING_FOOTER_LINKS: UffFooterLink[] = [
+  { href: UFF_EMAIL.wholesaleSiteUrl, label: "Home" },
+  { href: UFF_EMAIL.wholesaleContactUrl, label: "Contact" },
+  { href: UFF_EMAIL.wholesaleLicensingUrl, label: "Licensing" },
+  { href: UFF_EMAIL.portalUrl, label: "PRO Portal" },
+];
+
+/** Broker / wholesale loan notices — same public site as marketing (uff.pro). */
+export const WHOLESALE_FOOTER_LINKS: UffFooterLink[] = MARKETING_FOOTER_LINKS;
+
+/** Retail LO notices: borrower site (uff.loans) plus PRO Portal. */
+export const RETAIL_LO_FOOTER_LINKS: UffFooterLink[] = [
+  { href: UFF_EMAIL.portalUrl, label: "PRO Portal" },
   { href: UFF_EMAIL.siteUrl, label: "Home" },
   { href: UFF_EMAIL.contactUrl, label: "Contact" },
   { href: UFF_EMAIL.privacyUrl, label: "Privacy Policy" },
-  { href: UFF_EMAIL.portalUrl, label: "PRO Portal" },
 ];
 
 /** Internal LO / ops notices. */
 export const OPS_FOOTER_LINKS: UffFooterLink[] = [
   { href: UFF_EMAIL.portalUrl, label: "PRO Portal" },
-  { href: `mailto:${UFF_EMAIL.supportEmail}`, label: UFF_EMAIL.supportEmail },
+  { href: UFF_EMAIL.contactUrl, label: "Contact" },
 ];
 
 export const UFF_HERO_PLACEHOLDER = "<!-- UFF_HERO_IMAGE -->";
@@ -336,8 +349,14 @@ export function wrapUffEmail(opts: {
               <p style="margin:0 0 6px;font-family:${UFF_EMAIL.font};font-size:11px;line-height:1.6;color:${UFF_EMAIL.muted};">
                 ${UFF_EMAIL.companyName} Corp. · NMLS #${UFF_EMAIL.nmls} · Equal Housing Lender
               </p>
-              <p style="margin:0;font-family:${UFF_EMAIL.font};font-size:11px;line-height:1.6;color:${UFF_EMAIL.muted};">
+              <p style="margin:0 0 10px;font-family:${UFF_EMAIL.font};font-size:11px;line-height:1.6;color:${UFF_EMAIL.muted};">
                 ${UFF_EMAIL.address}<br />
+                <a href="tel:${UFF_EMAIL.phoneTel}" style="color:${UFF_EMAIL.muted};text-decoration:none;">${UFF_EMAIL.phone}</a>
+              </p>
+              <p style="margin:0 0 10px;font-family:${UFF_EMAIL.font};font-size:11px;line-height:1.6;color:${UFF_EMAIL.muted};">
+                This is not a commitment to lend. Not all products are available in all states. Rates, terms, and programs are subject to change without notice. All loans are subject to credit and property approval.
+              </p>
+              <p style="margin:0;font-family:${UFF_EMAIL.font};font-size:11px;line-height:1.6;color:${UFF_EMAIL.muted};">
                 Licensed in 39 states. &copy; ${year} ${UFF_EMAIL.companyName} Corp. All rights reserved.
               </p>
             </td>
@@ -390,7 +409,7 @@ Questions? Reach out to your Account Executive above, or call UFF at
     preheader,
     kicker: "UFF WHOLESALE",
     bodyHtml: `${heroBlock}${bodyHtml}${ctaBlock}${signoff}`,
-    logoHref: UFF_EMAIL.siteUrl,
+    logoHref: UFF_EMAIL.wholesaleSiteUrl,
     footerLinks: MARKETING_FOOTER_LINKS,
   });
 }
