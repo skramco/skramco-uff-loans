@@ -1,4 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import {
+  BORROWER_FOOTER_LINKS,
+  OPS_FOOTER_LINKS,
+  UFF_EMAIL,
+  detailTable,
+  wrapUffEmail,
+} from "../_shared/marketing/uffEmailTemplate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,32 +52,25 @@ function buildInternalSummaryEmail(payload: TalkToExpertRequest): { subject: str
 
   return {
     subject: `Talk to an expert request: ${payload.name}`,
-    html: `<!DOCTYPE html>
-<html lang="en">
-  <body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
-      <tr>
-        <td style="padding:20px 24px;background:#0f172a;color:#ffffff;">
-          <h2 style="margin:0;font-size:20px;">New Talk to an Expert Submission</h2>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:24px;">
-          <p style="margin:0 0 16px;font-size:14px;color:#475569;">A new request was submitted from the website.</p>
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
-            <tr><td style="padding:8px 0;color:#64748b;width:180px;">Name</td><td style="padding:8px 0;font-weight:600;">${safeName}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748b;">Email</td><td style="padding:8px 0;font-weight:600;">${safeEmail}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748b;">Phone</td><td style="padding:8px 0;font-weight:600;">${safePhone}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748b;">Preferred Contact Method</td><td style="padding:8px 0;font-weight:600;">${safeMethod}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748b;">Preferred Contact Time</td><td style="padding:8px 0;font-weight:600;">${safeTime}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748b;">Source</td><td style="padding:8px 0;font-weight:600;">${safeSource}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748b;">Submitted</td><td style="padding:8px 0;font-weight:600;">${submittedAt}</td></tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>`,
+    html: wrapUffEmail({
+      heading: "New talk to an expert request",
+      preheader: "A new request was submitted from the website.",
+      kicker: "INTERNAL NOTICE",
+      bodyHtml: `
+        <p style="font-family:${UFF_EMAIL.font};font-size:16px;color:${UFF_EMAIL.body};margin:0 0 16px;line-height:1.65;">A new request was submitted from the website.</p>
+        ${detailTable([
+          ["Name", safeName],
+          ["Email", safeEmail],
+          ["Phone", safePhone],
+          ["Preferred contact", safeMethod],
+          ["Preferred time", safeTime],
+          ["Source", safeSource],
+          ["Submitted", submittedAt],
+        ])}
+      `,
+      logoHref: UFF_EMAIL.siteUrl,
+      footerLinks: OPS_FOOTER_LINKS,
+    }),
   };
 }
 
@@ -84,53 +84,29 @@ function buildBorrowerConfirmationEmail(payload: TalkToExpertRequest): { subject
 
   return {
     subject: "We received your request - United Fidelity Funding",
-    html: `<!DOCTYPE html>
-<html lang="en">
-  <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 12px;">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;">
-            <tr>
-              <td style="background:linear-gradient(135deg,#0f172a,#1e3a8a);padding:28px 32px;border-radius:12px 12px 0 0;">
-                <p style="margin:0;font-size:12px;color:#bfdbfe;letter-spacing:0.08em;text-transform:uppercase;">United Fidelity Funding</p>
-                <h1 style="margin:8px 0 0;color:#ffffff;font-size:24px;line-height:1.3;">Thanks for reaching out</h1>
-              </td>
-            </tr>
-            <tr>
-              <td style="background:#ffffff;padding:30px 32px;">
-                <p style="margin:0 0 14px;color:#334155;font-size:15px;line-height:1.7;">Hi ${safeFirstName},</p>
-                <p style="margin:0 0 14px;color:#334155;font-size:15px;line-height:1.7;">
-                  We received your "Talk to an expert" request and our team will contact you by <strong>${methodText}</strong> during your preferred time window: <strong>${safeTime}</strong>.
-                </p>
-                <p style="margin:0 0 18px;color:#334155;font-size:15px;line-height:1.7;">
-                  If you need to update your request, reply to this email or call us directly at (855) 95-EAGLE.
-                </p>
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
-                  <tr>
-                    <td style="padding:14px 16px;">
-                      <p style="margin:0 0 8px;font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Your request details</p>
-                      <p style="margin:0 0 4px;font-size:14px;color:#0f172a;"><strong>Email:</strong> ${safeEmail}</p>
-                      <p style="margin:0;font-size:14px;color:#0f172a;"><strong>Phone:</strong> ${safePhone}</p>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-            <tr>
-              <td style="background:#f8fafc;padding:18px 32px;border-top:1px solid #e2e8f0;border-radius:0 0 12px 12px;">
-                <p style="margin:0;color:#64748b;font-size:12px;line-height:1.6;">
-                  United Fidelity Funding Corp. | NMLS #34381<br />
-                  1300 NW Briarcliff Pkwy #275, Kansas City, MO 64116
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>`,
+    html: wrapUffEmail({
+      heading: "Thanks for reaching out",
+      preheader: "We received your request and will be in touch during your preferred window.",
+      kicker: "UFF LOANS",
+      bodyHtml: `
+        <p style="font-family:${UFF_EMAIL.font};font-size:16px;color:${UFF_EMAIL.body};margin:0 0 16px;line-height:1.65;">Hi ${safeFirstName},</p>
+        <p style="font-family:${UFF_EMAIL.font};font-size:16px;color:${UFF_EMAIL.body};margin:0 0 16px;line-height:1.65;">
+          We received your request and our team will contact you by <strong>${methodText}</strong> during your preferred time window: <strong>${safeTime}</strong>.
+        </p>
+        ${detailTable([
+          ["Email", safeEmail],
+          ["Phone", safePhone],
+        ])}
+        <p style="font-family:${UFF_EMAIL.font};font-size:14px;color:${UFF_EMAIL.muted};margin:0;line-height:1.6;">
+          If you need to update your request, reply to this email or call us at
+          <a href="tel:${UFF_EMAIL.phoneTel}" style="color:${UFF_EMAIL.brandRed};text-decoration:none;">${UFF_EMAIL.phone}</a>.
+        </p>
+      `,
+      ctaUrl: UFF_EMAIL.contactUrl,
+      ctaLabel: "Contact UFF",
+      logoHref: UFF_EMAIL.siteUrl,
+      footerLinks: BORROWER_FOOTER_LINKS,
+    }),
   };
 }
 

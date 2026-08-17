@@ -1,5 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  OPS_FOOTER_LINKS,
+  UFF_EMAIL,
+  buildCtaButton,
+  statusBanner,
+  wrapUffEmail,
+} from "../_shared/marketing/uffEmailTemplate.ts";
 
 /**
  * Vesta Webhook Receiver — Channel-Aware Architecture
@@ -309,72 +316,19 @@ async function fetchObjectiveConditions(loanId: string): Promise<ConditionItem[]
 // ─── Email Shared Components ─────────────────────────────────────────────────
 
 const companyName = "United Fidelity Funding";
-const year = new Date().getFullYear();
-
-const stageChangeIcon = `<table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin-bottom:16px;"><tr><td style="width:64px;height:64px;background-color:rgba(255,255,255,0.15);border-radius:50%;text-align:center;line-height:64px;font-size:32px;">&#x1F504;</td></tr></table>`;
-
-// Outlook-safe button using VML fallback
-function outlookButton(url: string, label: string): string {
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:28px 0;"><tr><td align="center">
-<!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:48px;v-text-anchor:middle;width:260px;" arcsize="17%" strokecolor="#dc2626" fillcolor="#dc2626">
-<w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">${label}</center>
-</v:roundrect>
-<![endif]-->
-<!--[if !mso]><!-->
-<a href="${url}" target="_blank" style="display:inline-block;background-color:#dc2626;color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;letter-spacing:0.3px;mso-hide:all;">${label}</a>
-<!--<![endif]-->
-</td></tr></table>`;
-}
 
 function wrapEmail(heading: string, preheader: string, bodyContent: string, losUrl?: string, buttonLabel?: string): string {
-  return `<!DOCTYPE html>
-<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch><o:AllowPNG/></o:OfficeDocumentSettings></xml><![endif]-->
-  <title>${heading}</title>
-  <style>
-    @media only screen and (max-width: 620px) {
-      .email-container { width: 100% !important; }
-      .email-body { padding: 24px !important; }
-    }
-  </style>
-</head>
-<body style="margin:0;padding:0;background-color:#f8f9fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">
-  <span style="display:none;max-height:0;overflow:hidden;">${preheader}</span>
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f8f9fa;">
-    <tr>
-      <td align="center" style="padding:40px 20px;">
-        <table role="presentation" class="email-container" width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" style="background-color:#ffffff;">
-          <tr>
-            <td bgcolor="#dc2626" style="background-color:#dc2626;padding:40px 40px 30px;text-align:center;">
-              ${stageChangeIcon}
-              <h1 style="color:#ffffff;font-family:Arial,sans-serif;font-size:26px;font-weight:700;margin:0 0 8px;">${heading}</h1>
-              <p style="color:#fecaca;font-family:Arial,sans-serif;font-size:15px;margin:0;">${preheader}</p>
-            </td>
-          </tr>
-          <tr>
-            <td class="email-body" style="padding:40px;">
-              ${bodyContent}
-              ${losUrl ? outlookButton(losUrl, buttonLabel || "View Loan in LOS \u2192") : ""}
-              <p style="font-family:Arial,sans-serif;font-size:15px;color:#4b5563;margin:0;line-height:1.7;">Warm regards,<br><strong style="color:#1f2937;">The ${companyName} Team</strong></p>
-            </td>
-          </tr>
-          <tr>
-            <td bgcolor="#f9fafb" style="background-color:#f9fafb;padding:24px 40px;border-top:1px solid #e5e7eb;">
-              <p style="font-family:Arial,sans-serif;font-size:11px;color:#9ca3af;margin:0 0 8px;line-height:1.6;text-align:center;">${companyName} Corp., NMLS #34381 | 1300 NW Briarcliff Pkwy #275, Kansas City, MO 64116</p>
-              <p style="font-family:Arial,sans-serif;font-size:11px;color:#9ca3af;margin:0 0 8px;line-height:1.6;text-align:center;">Licensed in 39 states. <a href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/34381" style="color:#9ca3af;text-decoration:underline;">NMLS Consumer Access</a>.</p>
-              <p style="font-family:Arial,sans-serif;font-size:11px;color:#9ca3af;margin:0;line-height:1.6;text-align:center;">Equal Housing Lender. &copy; ${year} ${companyName} Corp. All rights reserved.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+  const cta = losUrl
+    ? buildCtaButton(losUrl, buttonLabel || "Open loan in LOS")
+    : "";
+  return wrapUffEmail({
+    heading,
+    preheader,
+    kicker: "LOAN UPDATE",
+    bodyHtml: `${bodyContent}${cta}<p style="font-family:${UFF_EMAIL.font};font-size:15px;color:${UFF_EMAIL.body};margin:24px 0 0;line-height:1.7;">Warm regards,<br><strong style="color:${UFF_EMAIL.ink};">The ${companyName} Team</strong></p>`,
+    logoHref: UFF_EMAIL.portalUrl,
+    footerLinks: OPS_FOOTER_LINKS,
+  });
 }
 
 // ─── Shared: Stage Colors & Detail Row Builder ───────────────────────────────
@@ -390,10 +344,28 @@ const stageColors: Record<string, { bg: string; border: string; text: string }> 
   "Clear to Close": { bg: "#f0fdf4", border: "#16a34a", text: "#166534" },
   "Closing": { bg: "#f0fdf4", border: "#16a34a", text: "#166534" },
   "Funded": { bg: "#f0fdf4", border: "#16a34a", text: "#166534" },
-  "Suspended": { bg: "#fef2f2", border: "#dc2626", text: "#991b1b" },
-  "Denied": { bg: "#fef2f2", border: "#dc2626", text: "#991b1b" },
-  "Withdrawn": { bg: "#fef2f2", border: "#dc2626", text: "#991b1b" },
+  "Suspended": { bg: "#fef2f2", border: "#E10404", text: "#b00303" },
+  "Denied": { bg: "#fef2f2", border: "#E10404", text: "#b00303" },
+  "Withdrawn": { bg: "#fef2f2", border: "#E10404", text: "#b00303" },
 };
+
+/** Stages after Funded — LoanStageChanged emails are suppressed for these. */
+const POST_FUNDED_STAGES = new Set([
+  "shipping",
+  "shipped",
+  "sold",
+  "post closing",
+  "post-closing",
+  "postclosing",
+  "post funding",
+  "post-funding",
+  "postfunding",
+]);
+
+function isPostFundedStage(stage: string | undefined | null): boolean {
+  if (!stage) return false;
+  return POST_FUNDED_STAGES.has(stage.trim().toLowerCase());
+}
 
 function detailRow(label: string, value: string): string {
   if (!value) return "";
@@ -418,7 +390,10 @@ function detailsTable(rows: string): string {
   </td></tr></table>`;
 }
 
-const apiWarningHtml = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#fef2f2;border-left:4px solid #dc2626;margin-bottom:24px;"><tr><td style="padding:16px 20px;"><p style="font-family:Arial,sans-serif;font-size:14px;color:#991b1b;margin:0;line-height:1.6;"><strong>Note:</strong> Could not fetch full loan details from Vesta API. Only webhook data is shown above.</p></td></tr></table>`;
+const apiWarningHtml = statusBanner(
+  "Note",
+  "Could not fetch full loan details from the LOS API. Only webhook data is shown above.",
+);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ─── CHANNEL-SPECIFIC EMAIL BUILDERS ─────────────────────────────────────────
@@ -498,7 +473,7 @@ function buildWholesaleStageChanged(webhook: VestaWebhookPayload, loan: LoanDeta
 
   return {
     subject: `[UFF] Stage Update: ${newStage}${loanNumber ? ` \u2014 Loan #${loanNumber}` : ""} \u2014 ${borrowerName}`,
-    html: wrapEmail("Loan Stage Update", `${borrowerName} \u2192 ${newStage}`, body, losUrl, "View Loan in PRO Portal \u2192"),
+    html: wrapEmail("Loan Stage Update", `${borrowerName} \u2192 ${newStage}`, body, losUrl, "Open loan in LOS"),
     recipients,
   };
 }
@@ -511,53 +486,48 @@ interface DecisionConfig {
   heading: string;
   preheader: (borrowerName: string, loanNumber: string) => string;
   subjectPrefix: string;
-  icon: string;
-  headerBg: string;
-  headerTextColor: string;
   accentColor: string;
+  tintBg: string;
+  textColor: string;
   greetingLine: (firstName: string, loanNumber: string) => string;
 }
 
 const decisionConfigs: Record<Decision, DecisionConfig> = {
   ConditionallyApprove: {
-    heading: "Conditionally Approved!",
-    preheader: (b, ln) => `Great news — Loan #${ln} for ${b} has been conditionally approved`,
+    heading: "Conditionally Approved",
+    preheader: (b, ln) => `Loan #${ln} for ${b} has been conditionally approved`,
     subjectPrefix: "Conditionally Approved",
-    icon: "&#x1F389;",
-    headerBg: "#16a34a",
-    headerTextColor: "#ffffff",
-    accentColor: "#16a34a",
-    greetingLine: (f, ln) => `Great news! Loan${ln ? ` #<strong>${ln}</strong>` : ""} has been <strong>conditionally approved</strong> by underwriting. There are conditions that need to be satisfied before we can move forward. Please review the conditions below:`,
+    accentColor: "#1b5e20",
+    tintBg: "#e4f3e5",
+    textColor: "#1b5e20",
+    greetingLine: (_f, ln) => `Loan${ln ? ` #<strong>${ln}</strong>` : ""} has been <strong>conditionally approved</strong> by underwriting. There are conditions that need to be satisfied before we can move forward. Please review the conditions below:`,
   },
   ClearToClose: {
-    heading: "Clear to Close!",
-    preheader: (b, ln) => `Exciting — Loan #${ln} for ${b} is Clear to Close!`,
+    heading: "Clear to Close",
+    preheader: (b, ln) => `Loan #${ln} for ${b} is Clear to Close`,
     subjectPrefix: "Clear to Close",
-    icon: "&#x1F3C1;",
-    headerBg: "#059669",
-    headerTextColor: "#ffffff",
-    accentColor: "#059669",
-    greetingLine: (f, ln) => `Incredible news! Loan${ln ? ` #<strong>${ln}</strong>` : ""} is <strong>Clear to Close</strong>! This is the final step before closing documents are sent out — the finish line is right around the corner. Here are the remaining items:`,
+    accentColor: "#1b5e20",
+    tintBg: "#e4f3e5",
+    textColor: "#1b5e20",
+    greetingLine: (_f, ln) => `Loan${ln ? ` #<strong>${ln}</strong>` : ""} is <strong>Clear to Close</strong>. This is the final step before closing documents are sent out. Here are the remaining items:`,
   },
   Deny: {
     heading: "Loan Decision: Denied",
     preheader: (b, ln) => `Loan #${ln} for ${b} — Underwriter Decision: Denied`,
     subjectPrefix: "Decision: Denied",
-    icon: "&#x26D4;",
-    headerBg: "#6b7280",
-    headerTextColor: "#ffffff",
-    accentColor: "#6b7280",
-    greetingLine: (f, ln) => `Loan${ln ? ` #<strong>${ln}</strong>` : ""} has received an underwriting decision of <strong>Denied</strong>. Please review the conditions and underwriter notes below for details.`,
+    accentColor: UFF_EMAIL.brandRed,
+    tintBg: "#fef2f2",
+    textColor: "#b00303",
+    greetingLine: (_f, ln) => `Loan${ln ? ` #<strong>${ln}</strong>` : ""} has received an underwriting decision of <strong>Denied</strong>. Please review the conditions and underwriter notes below for details.`,
   },
   Suspend: {
     heading: "Loan Decision: Suspended",
     preheader: (b, ln) => `Loan #${ln} for ${b} — Underwriter Decision: Suspended`,
     subjectPrefix: "Decision: Suspended",
-    icon: "&#x23F8;&#xFE0F;",
-    headerBg: "#d97706",
-    headerTextColor: "#ffffff",
-    accentColor: "#d97706",
-    greetingLine: (f, ln) => `Loan${ln ? ` #<strong>${ln}</strong>` : ""} has been <strong>Suspended</strong> by underwriting. This means the file needs additional information or corrections before it can be re-reviewed. Please review the conditions below:`,
+    accentColor: "#7b5800",
+    tintBg: "#fff4d6",
+    textColor: "#7b5800",
+    greetingLine: (_f, ln) => `Loan${ln ? ` #<strong>${ln}</strong>` : ""} has been <strong>Suspended</strong> by underwriting. The file needs additional information or corrections before it can be re-reviewed. Please review the conditions below:`,
   },
 };
 
@@ -619,54 +589,24 @@ function buildDenyReasonsHtml(reasons: string[]): string {
 // ── Shared decision email wrapper (overrides header color) ──
 
 function wrapDecisionEmail(config: DecisionConfig, preheader: string, bodyContent: string, losUrl?: string, buttonLabel?: string): string {
-  const iconHtml = `<table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin-bottom:16px;"><tr><td style="width:64px;height:64px;background-color:rgba(255,255,255,0.15);border-radius:50%;text-align:center;line-height:64px;font-size:32px;">${config.icon}</td></tr></table>`;
-  return `<!DOCTYPE html>
-<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch><o:AllowPNG/></o:OfficeDocumentSettings></xml><![endif]-->
-  <title>${config.heading}</title>
-  <style>
-    @media only screen and (max-width: 620px) {
-      .email-container { width: 100% !important; }
-      .email-body { padding: 24px !important; }
-    }
-  </style>
-</head>
-<body style="margin:0;padding:0;background-color:#f8f9fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;">
-  <span style="display:none;max-height:0;overflow:hidden;">${preheader}</span>
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f8f9fa;">
-    <tr>
-      <td align="center" style="padding:40px 20px;">
-        <table role="presentation" class="email-container" width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" style="background-color:#ffffff;">
-          <tr>
-            <td bgcolor="${config.headerBg}" style="background-color:${config.headerBg};padding:40px 40px 30px;text-align:center;">
-              ${iconHtml}
-              <h1 style="color:${config.headerTextColor};font-family:Arial,sans-serif;font-size:26px;font-weight:700;margin:0 0 8px;">${config.heading}</h1>
-              <p style="color:rgba(255,255,255,0.75);font-family:Arial,sans-serif;font-size:15px;margin:0;">${preheader}</p>
-            </td>
-          </tr>
-          <tr>
-            <td class="email-body" style="padding:40px;">
-              ${bodyContent}
-              ${losUrl ? outlookButton(losUrl, buttonLabel || "View Loan in LOS \u2192") : ""}
-              <p style="font-family:Arial,sans-serif;font-size:15px;color:#4b5563;margin:0;line-height:1.7;">Warm regards,<br><strong style="color:#1f2937;">The ${companyName} Team</strong></p>
-            </td>
-          </tr>
-          <tr>
-            <td bgcolor="#f9fafb" style="background-color:#f9fafb;padding:24px 40px;border-top:1px solid #e5e7eb;">
-              <p style="font-family:Arial,sans-serif;font-size:11px;color:#9ca3af;margin:0 0 8px;line-height:1.6;text-align:center;">${companyName} Corp., NMLS #34381 | 1300 NW Briarcliff Pkwy #275, Kansas City, MO 64116</p>
-              <p style="font-family:Arial,sans-serif;font-size:11px;color:#9ca3af;margin:0 0 8px;line-height:1.6;text-align:center;">Licensed in 39 states. <a href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/34381" style="color:#9ca3af;text-decoration:underline;">NMLS Consumer Access</a>.</p>
-              <p style="font-family:Arial,sans-serif;font-size:11px;color:#9ca3af;margin:0;line-height:1.6;text-align:center;">Equal Housing Lender. &copy; ${year} ${companyName} Corp. All rights reserved.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+  const banner = statusBanner(
+    config.heading.toUpperCase(),
+    preheader,
+    config.tintBg,
+    config.accentColor,
+    config.textColor,
+  );
+  const cta = losUrl
+    ? buildCtaButton(losUrl, buttonLabel || "Open loan in LOS")
+    : "";
+  return wrapUffEmail({
+    heading: config.heading,
+    preheader,
+    kicker: "UNDERWRITING",
+    bodyHtml: `${banner}${bodyContent}${cta}<p style="font-family:${UFF_EMAIL.font};font-size:15px;color:${UFF_EMAIL.body};margin:24px 0 0;line-height:1.7;">Warm regards,<br><strong style="color:${UFF_EMAIL.ink};">The ${companyName} Team</strong></p>`,
+    logoHref: UFF_EMAIL.portalUrl,
+    footerLinks: OPS_FOOTER_LINKS,
+  });
 }
 
 // ── UnderwriterDecision: RETAIL (LO-focused) ──────────────────────────────────
@@ -777,7 +717,7 @@ function buildWholesaleUnderwriterDecision(webhook: VestaWebhookPayload, loan: L
 
   return {
     subject: `[UFF] ${config.subjectPrefix}${loanNumber ? ` \u2014 Loan #${loanNumber}` : ""} \u2014 ${borrowerName}`,
-    html: wrapDecisionEmail(config, preheader, body, losUrl, "View Loan in PRO Portal \u2192"),
+    html: wrapDecisionEmail(config, preheader, body, losUrl, "Open loan in LOS"),
     recipients,
   };
 }
@@ -892,6 +832,22 @@ Deno.serve(async (req: Request) => {
   const loanId = rawPayload.loanId || rawPayload.LoanId || "";
   console.log(`Vesta webhook: ${eventType}, loanId: ${loanId}, channel: ${rawPayload.loanChannel || "?"}`);
 
+  // Events that are acknowledged/logged only — never send email
+  const NO_EMAIL_EVENT_TYPES = new Set(["DataChanged"]);
+  if (NO_EMAIL_EVENT_TYPES.has(eventType)) {
+    console.log(`Skipping email for silent event type: ${eventType}`);
+    await logWebhookEvent(eventType, "Unknown", rawPayload, null, [], [
+      `Skipped email: silent event type "${eventType}"`,
+    ]);
+    return jsonResponse({
+      received: true,
+      eventType,
+      emailsSent: 0,
+      skipped: true,
+      skipReason: "silent_event_type",
+    });
+  }
+
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   if (!resendApiKey) {
     console.error("RESEND_API_KEY not configured");
@@ -923,6 +879,26 @@ Deno.serve(async (req: Request) => {
   if (needsConditions.includes(eventType) && loanId) {
     conditions = await fetchObjectiveConditions(loanId);
     console.log(`Fetched ${conditions.length} conditions for ${eventType}`);
+  }
+
+  // ── Suppress stage-change emails after Funded (Sold, Shipping, etc.) ──
+  const newLoanStage = rawPayload.newLoanStage || rawPayload.NewLoanStage || "";
+  if (eventType === "LoanStageChanged" && isPostFundedStage(newLoanStage)) {
+    console.log(`Skipping LoanStageChanged email for post-funded stage: ${newLoanStage}`);
+    await logWebhookEvent(eventType, channel, rawPayload, loan, emailsSent, [
+      ...errors,
+      `Skipped email: post-funded stage "${newLoanStage}"`,
+    ]);
+    return jsonResponse({
+      received: true,
+      eventType,
+      channel,
+      newLoanStage,
+      loanNumber: loan?.loanNumber || null,
+      emailsSent: 0,
+      skipped: true,
+      skipReason: "post_funded_stage",
+    });
   }
 
   // ── Dispatch to channel-specific handler ──
@@ -962,24 +938,19 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ── Fallback for unregistered event types ──
-  const fallbackSubject = `[Vesta] ${eventType}${loan?.loanNumber ? ` \u2014 Loan #${loan.loanNumber}` : ""} \u2014 ${loan?.borrowerName || "Unknown"}`;
-  const fallbackHtml = wrapEmail(
-    "Vesta Event Received", `Event: ${eventType}`,
-    `<p style="font-family:Arial,sans-serif;font-size:15px;color:#334155;margin:0 0 16px;">A <strong>${eventType}</strong> event was received from Vesta.</p>
-    ${detailsTable([
-      detailRow("Event", eventType),
-      detailRow("Channel", channel),
-      detailRow("Loan #", loan?.loanNumber || ""),
-      detailRow("Borrower", loan?.borrowerName || ""),
-    ].join(""))}
-    <p style="font-family:Arial,sans-serif;font-size:13px;color:#94a3b8;margin:0;">Received at ${new Date().toISOString()}</p>`,
-    losUrl
-  );
-  const result = await sendEmail(resendApiKey, [companyEmail], fallbackSubject, fallbackHtml);
-  if (result.success) emailsSent.push(`company:${companyEmail}`);
-  else errors.push(`company email failed: ${result.error}`);
-
-  await logWebhookEvent(eventType, channel, rawPayload, loan, emailsSent, errors);
-  return jsonResponse({ received: true, eventType, channel, emailsSent: emailsSent.length, errors: errors.length > 0 ? errors : undefined });
+  // ── Unregistered event types: log only, no email ──
+  console.log(`No email handler for event type: ${eventType} — logging only`);
+  await logWebhookEvent(eventType, channel, rawPayload, loan, emailsSent, [
+    ...errors,
+    `Skipped email: unregistered event type "${eventType}"`,
+  ]);
+  return jsonResponse({
+    received: true,
+    eventType,
+    channel,
+    loanNumber: loan?.loanNumber || null,
+    emailsSent: 0,
+    skipped: true,
+    skipReason: "unregistered_event_type",
+  });
 });
