@@ -1,4 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import {
+  BORROWER_FOOTER_LINKS,
+  UFF_EMAIL,
+  extractEmailBodyFragment,
+  wrapUffEmail,
+} from "../_shared/marketing/uffEmailTemplate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -248,21 +254,23 @@ Deno.serve(async (req: Request) => {
       "Borrower";
 
     const letterHtml = buildLetterHtml(loan, companyName);
-
     const greeting = recipientName ? `Dear ${recipientName},` : "Hello,";
-    const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family:'Helvetica Neue',Arial,sans-serif;color:#334155;margin:0;padding:0;">
-<div style="max-width:650px;margin:0 auto;padding:32px;">
-  <p>${greeting}</p>
-  <p>Please find the pre-approval letter for <strong>${borrowerName}</strong> attached below. This letter confirms the borrower's qualification for mortgage financing and may be included with any purchase offer.</p>
-  <p>If you have any questions about this pre-approval, please contact the loan officer listed in the letter.</p>
-  <hr style="border:none;border-top:2px solid #e2e8f0;margin:24px 0;">
-  ${letterHtml}
-</div>
-</body>
-</html>`;
+    const emailHtml = wrapUffEmail({
+      heading: "Pre-approval letter",
+      preheader: `Pre-approval letter for ${borrowerName}`,
+      kicker: "UFF LOANS",
+      bodyHtml: `
+        <p style="font-family:${UFF_EMAIL.font};font-size:16px;color:${UFF_EMAIL.body};margin:0 0 16px;line-height:1.65;">${greeting}</p>
+        <p style="font-family:${UFF_EMAIL.font};font-size:16px;color:${UFF_EMAIL.body};margin:0 0 24px;line-height:1.65;">
+          Please find the pre-approval letter for <strong>${borrowerName}</strong> below. This letter confirms the borrower's qualification for mortgage financing and may be included with any purchase offer.
+        </p>
+        ${extractEmailBodyFragment(letterHtml)}
+      `,
+      ctaUrl: UFF_EMAIL.loginUrl,
+      ctaLabel: "Sign in to your loan",
+      logoHref: UFF_EMAIL.siteUrl,
+      footerLinks: BORROWER_FOOTER_LINKS,
+    });
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

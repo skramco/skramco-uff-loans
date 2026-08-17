@@ -3,6 +3,13 @@
  * Do not import from client src/.
  */
 
+import {
+  BORROWER_FOOTER_LINKS,
+  OPS_FOOTER_LINKS,
+  UFF_EMAIL,
+  wrapUffEmail,
+} from "../../supabase/functions/_shared/marketing/uffEmailTemplate.ts";
+
 export const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -112,45 +119,48 @@ function buildInternalHtml(email: string, lead: Record<string, unknown>): string
     minute: "2-digit",
   });
   const safeEmail = escapeHtml(email.trim());
-  return `<!DOCTYPE html>
-<html lang="en"><body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:10px;">
-<tr><td style="padding:20px 24px;background:#0f172a;color:#fff;"><h2 style="margin:0;font-size:18px;">Pre-app flow — summary emailed</h2></td></tr>
-<tr><td style="padding:24px;">
-<p style="margin:0 0 16px;font-size:14px;color:#475569;">Visitor requested a copy of their /start summary.</p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;border-collapse:collapse;">
-<tr><td style="padding:8px 0;color:#64748b;">Email</td><td style="padding:8px 0;font-weight:600;">${safeEmail}</td></tr>
-<tr><td style="padding:8px 0;color:#64748b;">Submitted</td><td style="padding:8px 0;font-weight:600;">${escapeHtml(when)}</td></tr>
-</table>
-<p style="margin:24px 0 8px;font-size:13px;font-weight:700;color:#334155;">Inputs &amp; estimates</p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;border-collapse:collapse;">${rows}</table>
-<p style="margin:16px 0 0;font-size:12px;color:#64748b;line-height:1.5;">${escapeHtml(disclaimer)}</p>
-</td></tr></table></body></html>`;
+  return wrapUffEmail({
+    heading: "Pre-app summary requested",
+    preheader: "Visitor requested a copy of their /start summary.",
+    kicker: "INTERNAL NOTICE",
+    bodyHtml: `
+      <p style="font-family:${UFF_EMAIL.font};font-size:16px;color:${UFF_EMAIL.body};margin:0 0 16px;line-height:1.65;">Visitor requested a copy of their rate-flow summary.</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+        <tr><td style="padding:10px 0;border-bottom:1px solid ${UFF_EMAIL.hairline};font-family:${UFF_EMAIL.font};font-size:14px;color:${UFF_EMAIL.muted};">Email</td><td style="padding:10px 0;border-bottom:1px solid ${UFF_EMAIL.hairline};font-family:${UFF_EMAIL.font};font-size:14px;color:${UFF_EMAIL.ink};font-weight:600;text-align:right;">${safeEmail}</td></tr>
+        <tr><td style="padding:10px 0;font-family:${UFF_EMAIL.font};font-size:14px;color:${UFF_EMAIL.muted};">Submitted</td><td style="padding:10px 0;font-family:${UFF_EMAIL.font};font-size:14px;color:${UFF_EMAIL.ink};font-weight:600;text-align:right;">${escapeHtml(when)}</td></tr>
+      </table>
+      <p style="margin:0 0 8px;font-family:${UFF_EMAIL.font};font-size:13px;font-weight:700;color:${UFF_EMAIL.ink};">Inputs &amp; estimates</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
+      <p style="margin:16px 0 0;font-family:${UFF_EMAIL.font};font-size:12px;color:${UFF_EMAIL.muted};line-height:1.5;">${escapeHtml(disclaimer)}</p>
+    `,
+    logoHref: UFF_EMAIL.siteUrl,
+    footerLinks: OPS_FOOTER_LINKS,
+  });
 }
 
 function buildBorrowerHtml(email: string, lead: Record<string, unknown>): string {
   const first = email.trim().split("@")[0] || "there";
   const safeFirst = escapeHtml(first);
   const { rows, disclaimer } = summarizeLead(lead);
-  return `<!DOCTYPE html>
-<html lang="en"><body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;">
-<tr><td align="center">
-<table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;">
-<tr><td style="background:linear-gradient(135deg,#0f172a,#1e3a8a);padding:28px 32px;border-radius:12px 12px 0 0;">
-<p style="margin:0;font-size:12px;color:#bfdbfe;letter-spacing:0.08em;text-transform:uppercase;">United Fidelity Funding</p>
-<h1 style="margin:8px 0 0;color:#fff;font-size:22px;">Hi ${safeFirst}, here is your summary</h1>
-</td></tr>
-<tr><td style="background:#fff;padding:28px 32px;border:1px solid #e2e8f0;border-top:none;">
-<p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">Thanks for using our pre-application experience. Below are the assumptions you entered and the illustrative range we showed on screen.</p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;border-collapse:collapse;">${rows}</table>
-<p style="margin:20px 0 0;font-size:12px;color:#64748b;line-height:1.6;">${escapeHtml(disclaimer)}</p>
-<p style="margin:20px 0 0;font-size:14px;color:#0f172a;">Questions? Call <strong>(855) 95-EAGLE</strong> or reply to this email.</p>
-</td></tr>
-<tr><td style="background:#f8fafc;padding:18px 32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;">
-<p style="margin:0;color:#64748b;font-size:12px;line-height:1.6;">United Fidelity Funding Corp. | NMLS #34381<br />1300 NW Briarcliff Pkwy #275, Kansas City, MO 64116</p>
-</td></tr>
-</table></td></tr></table></body></html>`;
+  return wrapUffEmail({
+    heading: `Hi ${safeFirst}, here is your summary`,
+    preheader: "Your personalized options from United Fidelity Funding",
+    kicker: "UFF LOANS",
+    bodyHtml: `
+      <p style="font-family:${UFF_EMAIL.font};font-size:16px;color:${UFF_EMAIL.body};margin:0 0 16px;line-height:1.65;">
+        Thanks for using our pre-application experience. Below are the assumptions you entered and the illustrative range we showed on screen.
+      </p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
+      <p style="margin:20px 0 0;font-family:${UFF_EMAIL.font};font-size:12px;color:${UFF_EMAIL.muted};line-height:1.6;">${escapeHtml(disclaimer)}</p>
+      <p style="margin:20px 0 0;font-family:${UFF_EMAIL.font};font-size:14px;color:${UFF_EMAIL.body};">
+        Questions? Call <a href="tel:${UFF_EMAIL.phoneTel}" style="color:${UFF_EMAIL.brandRed};text-decoration:none;">${UFF_EMAIL.phone}</a> or reply to this email.
+      </p>
+    `,
+    ctaUrl: UFF_EMAIL.contactUrl,
+    ctaLabel: "Talk with UFF",
+    logoHref: UFF_EMAIL.siteUrl,
+    footerLinks: BORROWER_FOOTER_LINKS,
+  });
 }
 
 async function sendResend(
