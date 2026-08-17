@@ -150,6 +150,11 @@ function getVestaLoanUrl(apiUrl: string, loanId: string): string | undefined {
   return `${apiUrl.replace(/\/api\/v\d+\/?$/, "")}/loans/${loanId}`;
 }
 
+function getProPortalLoanUrl(loanId: string): string | undefined {
+  if (!loanId) return undefined;
+  return `${UFF_EMAIL.portalUrl}/broker/loans/${loanId}`;
+}
+
 // ─── Fetch Loan Details ──────────────────────────────────────────────────────
 
 async function fetchLoanDetails(loanId: string): Promise<LoanDetails | null> {
@@ -473,7 +478,7 @@ function buildWholesaleStageChanged(webhook: VestaWebhookPayload, loan: LoanDeta
 
   return {
     subject: `[UFF] Stage Update: ${newStage}${loanNumber ? ` \u2014 Loan #${loanNumber}` : ""} \u2014 ${borrowerName}`,
-    html: wrapEmail("Loan Stage Update", `${borrowerName} \u2192 ${newStage}`, body, losUrl, "Open loan in LOS"),
+    html: wrapEmail("Loan Stage Update", `${borrowerName} \u2192 ${newStage}`, body, losUrl, "Open loan in Pro Portal"),
     recipients,
   };
 }
@@ -717,7 +722,7 @@ function buildWholesaleUnderwriterDecision(webhook: VestaWebhookPayload, loan: L
 
   return {
     subject: `[UFF] ${config.subjectPrefix}${loanNumber ? ` \u2014 Loan #${loanNumber}` : ""} \u2014 ${borrowerName}`,
-    html: wrapDecisionEmail(config, preheader, body, losUrl, "Open loan in LOS"),
+    html: wrapDecisionEmail(config, preheader, body, losUrl, "Open loan in Pro Portal"),
     recipients,
   };
 }
@@ -869,9 +874,11 @@ Deno.serve(async (req: Request) => {
   const channel = resolveChannel(rawPayload as VestaWebhookPayload, loan);
   console.log(`Resolved channel: ${channel}`);
 
-  // Get Vesta LOS URL for button
+  // Broker emails deep-link to Pro Portal. Internal (retail LO / setup) emails stay on LOS.
   const vestaConfig = await getVestaConfig();
   const losUrl = getVestaLoanUrl(vestaConfig.apiUrl, loanId);
+  const portalUrl = getProPortalLoanUrl(loanId);
+  const loanLinkUrl = channel === "Wholesale" ? portalUrl : losUrl;
 
   // Fetch conditions for event types that need them
   const needsConditions = ["UnderwriterDecision"];
@@ -906,7 +913,7 @@ Deno.serve(async (req: Request) => {
   if (handlers) {
     const builder = handlers[channel] || handlers["Retail"]; // fallback to Retail for Unknown
     if (builder) {
-      const email = builder(rawPayload as VestaWebhookPayload, loan, losUrl, conditions);
+      const email = builder(rawPayload as VestaWebhookPayload, loan, loanLinkUrl, conditions);
 
       // Send to channel-specific recipients
       const sent = new Set<string>();
