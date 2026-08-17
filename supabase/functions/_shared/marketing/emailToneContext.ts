@@ -218,10 +218,10 @@ FUNNY TONE — HARD LIMITS (non-negotiable):
 const EDGY_FUNNY_STYLE = `
 FUNNY TONE — VOICE (borderline insulting, never corny):
 - Write like a ruthless top producer who thinks most brokers are leaving six figures on the table because they can't read a guideline PDF — shockingly funny, not "newsletter cute."
-- OPEN by insulting the reader's habits (playfully brutal): one-AUS-and-quit, default FHA pivot, ignoring asset depletion, treating Non-QM like a last resort, pipeline neglect, denial-letter reflex.
+- OPEN by insulting the reader's habits (playfully brutal): one-AUS-and-quit, default FHA pivot, treating Non-QM like a last resort, pipeline neglect, denial-letter reflex.
 - Prefer: savage deadpan, brutal honesty, call-out humor, unexpected analogies, hyperbolic broker-pain truth, absurdist scenarios, punchy one-liners, "you donated that deal to your competitor" energy.
 - AVOID: dad jokes, forced puns, motivational-poster humor, office-lunch corny bits, emoji spam, try-hard wordplay (no "loan-tastic", no groaners).
-- Subject lines must sting — make them open out of guilt, curiosity, or defensive pride ("You're not bad at this. You're just lazy about asset depletion.").
+- Subject lines must sting — make them open out of guilt, curiosity, or defensive pride ("You're not bad at this. You're just lazy about bank statements.").
 - email_html: insult → intricate rescue scenario → numbered action steps. The roast sells the intelligence.
 - linkedin_post: same energy — peers should feel tagged and attacked (in a good way).
 - canva_prompt: visual punchline for the roast (broker asleep at pipeline wheel, competitor closing with bank statements, etc.).
@@ -235,7 +235,7 @@ ${FUNNY_TONE_BOUNDARIES}
 ${EDGY_FUNNY_STYLE}
 
 Tone reference (style only — do not copy verbatim):
-- "You didn't lose that deal. You gift-wrapped it for a broker who knows what asset depletion is."
+- "You didn't lose that deal. You gift-wrapped it for a broker who actually ran DSCR."
 - "Running AUS once isn't scenario work. It's a coin flip with extra steps."
 - "If your DTI rescue plan starts with FHA, you're not structuring — you're surrendering."
 `.trim();

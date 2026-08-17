@@ -21,15 +21,21 @@ SUCCESS CRITERIA (self-check):
 1. Educational value — broker learns something specific
 2. Profitability impact — ties to production or pull-through
 3. Actionability — implementable today (numbered broker action steps required)
-4. Product expertise — accurate program awareness (Conventional, FHA, VA, USDA, Non-QM: DSCR, bank statement, asset depletion, IO, foreign national, jumbo)
+4. Product expertise — accurate program awareness across Conventional, FHA, VA, USDA, jumbo, streamlines, and Non-QM (DSCR, bank statement, interest-only, foreign national; asset depletion only when the file truly fits)
 5. Scenario relevance — real borrower/situation framing
 6. Compliance safety — no guarantees, no unsupported claims
 7. Business development value — referrals, niches, or pipeline growth where relevant
+8. Freshness — do not recycle the same product lane campaign after campaign
 
 CONTENT TO AVOID:
 - Product ads, generic rate messaging, "best/lowest/guaranteed/fastest/number one" claims
 - Surface product brochures, empty bullet features, hype without structure
 - Construction loans or construction-to-perm — UFF does not offer them; never recommend or structure construction financing
+- Defaulting to asset depletion. It is one niche Non-QM lane (retiree / HNW / thin documented income with large qualified assets). Do not use it as UFF's signature story.
+
+PRODUCT ROTATION (mandatory unless the operator prompt names a specific program):
+Span the full UFF menu over time: Conventional (purchase, cash-out, MI removal, co-borrower, HomeReady/Home Possible), FHA (when guidelines genuinely fit), VA / IRRRL, USDA, DSCR, bank-statement 12/24, interest-only, foreign national, jumbo, streamlines, processing/ops, and growth/referrals.
+If the assignment does not specify a product, pick a lane that is NOT asset depletion.
 
 CONTENT TO DELIVER:
 - Deal structuring, loan rescue paths, referral strategies, product deep-dives
@@ -58,7 +64,7 @@ EDUCATIONAL FRAMEWORK — include a practical mix in email_html:
 
 UFF WHOLESALE POSITIONING (supported claims only):
 - Competitive/aggressive pricing, strong product breadth, execution, scenario desk support, operational consistency
-- Products: Conventional, FHA, VA, USDA, Non-QM (DSCR, bank statement, asset depletion, interest-only, foreign national, jumbo), streamline expertise
+- Products: Conventional, FHA, VA, USDA, jumbo, streamlines, Non-QM (DSCR, bank statement, interest-only, foreign national; asset depletion as a niche lane only)
 - Does NOT offer: construction loans, construction-to-perm, one-time-close construction, or builder construction financing
 - Technology: PRO Portal for origination workflow only (see separate PRO Portal facts if provided)
 - Do NOT claim: best rates, lowest rates, guaranteed approval, fastest lender, #1 lender
@@ -71,44 +77,45 @@ PRODUCT FAMILIES (reference accurately by campaign topic):
 - Conventional: purchase (FTHB, low down, gifts, co-borrower, HomeReady/Home Possible), refi (rate/term, cash-out, MI removal, debt consolidation), rescue (DTI restructure via debt paydown/cash-out, non-occupant co-borrower, asset reserves, income re-characterization — NOT automatic FHA pivot)
 - FHA: credit-challenged, low down, manual UW with documented compensating factors — use when FHA guidelines genuinely fit, not as default DTI band-aid
 - VA: purchase (veteran, PCS, relocation, entitlement); IRRRL retention; residual income analysis; rescue when veteran eligibility is the unlock
-- Non-QM: DSCR (no personal income DTI); bank statement 12/24mo (self-employed, 1099, commission); asset depletion 36/60mo (retirees, HNW, low documented income); interest-only cash flow; foreign national; jumbo non-QM executives; P&L-only where offered
+- Non-QM: DSCR (no personal income DTI); bank statement 12/24mo (self-employed, 1099, commission); interest-only cash flow; foreign national; jumbo; P&L-only where offered. Asset depletion 36/60mo is a niche retiree/HNW lane — use sparingly, not as the default Non-QM example.
 - USDA: rural/suburban eligibility where applicable
 
 NOT OFFERED: construction loans, construction-to-perm, OTC construction, ground-up/spec construction financing, builder construction programs.
 `.trim();
 
-/** Sophisticated, compliant structuring paths — rotate across these; never default to Conv→FHA. */
+/** Sophisticated, compliant structuring paths — rotate across these; never default to Conv→FHA or asset depletion. */
 export const ADVANCED_STRUCTURING_PLAYBOOK = `
-ADVANCED STRUCTURING PLAYBOOK — pick ONE intricate scenario per campaign; go deep on mechanics:
+ADVANCED STRUCTURING PLAYBOOK — pick ONE intricate scenario per campaign; go deep on mechanics.
+ROTATE THE LANE. Do not default to asset depletion. Prefer Conventional restructure, VA, USDA, FHA-when-it-fits, DSCR, bank statement, jumbo, IO, or foreign national unless the file is clearly retiree/HNW thin-income with large qualified assets.
 
 INNOVATIVE RESCUE PATHS (legal, compliant — high-level only; no fabricated approvals):
-1. Conv AUS DTI fail + strong liquid assets → Non-QM asset depletion (36- or 60-month lookback; which accounts qualify; CPA letter vs statements)
-2. W-2 income short + $800k+ IRA/401k/brokerage → asset depletion income calculation; retiree/HNW purchase or refi
-3. Self-employed YOY decline on tax returns → 12/24-month bank statement (business or personal); expense ratio election; P&L support
-4. 1099 / commission / tip income volatility → bank statement or 1099-only programs; 24-month average vs most recent year strategy
-5. Investor with 6+ rentals, personal DTI blown → DSCR on subject (or portfolio); no personal income DTI; rent roll + lease doc stack
-6. Foreign national, no SSN, large down payment → foreign national Non-QM; visa/passport doc path; reserve requirements
-7. Executive with low W-2 + RSU/bonus → asset depletion supplement or bank statement hybrid; vesting schedule documentation
-8. High debt load killing DTI → cash-out refi debt consolidation (Conv or Non-QM) then re-run eligibility; which debts pay off first
-9. Non-occupant co-borrower (parent, spouse not on title) → income addition where permitted; gift vs co-borrower analysis
-10. Departing residence → convert to rental; use lease/rental income offset (document 75% or program-specific factor)
-11. Interest-only need for cash-flow buyer → IO Non-QM or jumbo IO where offered; payment shock disclosure awareness
-12. Recent credit event (BK/SS/DIL seasoning) → Non-QM seasoning lanes vs FHA/VA if eligible; timeline math
-13. Divorce decree income (alimony/child support) → qualifying income docs, continuance, receipt history
-14. Trust or estate income beneficiary → trust agreement, distribution history, letter from trustee/CPA
-15. One-time capital gains spike → exclude from recurring income; restructure with asset depletion or bank statement instead
-16. STR/Airbnb income → bank statement or DSCR depending on property; seasonality documentation
-17. Multiple REO/investment acquisitions → DSCR per property; cross-collateral considerations at high level
-18. Conv MI blocking payment → MI removal refi path vs LTV reduction vs piggyback restructure (where applicable)
-19. Asset utilization / pledged assets → offset DTI with documented pledged asset formula (program-specific)
-20. Delayed financing after cash purchase → reinvest liquidity without waiting 6-month seasoning (Conv delayed financing rules)
+1. High debt load killing DTI → cash-out refi debt consolidation (Conv or Non-QM) then re-run eligibility; which debts pay off first
+2. Self-employed YOY decline on tax returns → 12/24-month bank statement (business or personal); expense ratio election; P&L support
+3. Investor with 6+ rentals, personal DTI blown → DSCR on subject (or portfolio); no personal income DTI; rent roll + lease doc stack
+4. Unused VA entitlement / IRRRL retention → residual income analysis; veteran referral channels
+5. Credit-challenged file that actually fits FHA (low down, manual UW with documented compensating factors) — only when FHA guidelines genuinely fit, never as a lazy Conv DTI band-aid
+6. Rural/suburban USDA eligibility map nobody ran
+7. 1099 / commission / tip income volatility → bank statement or 1099-only programs; 24-month average vs most recent year strategy
+8. Foreign national, no SSN, large down payment → foreign national Non-QM; visa/passport doc path; reserve requirements
+9. Jumbo / executive HNW — documentation expectations and relationship referrals
+10. Interest-only need for cash-flow buyer → IO Non-QM or jumbo IO where offered; payment shock disclosure awareness
+11. Non-occupant co-borrower (parent, spouse not on title) → income addition where permitted; gift vs co-borrower analysis
+12. Departing residence → convert to rental; use lease/rental income offset (document 75% or program-specific factor)
+13. Conv MI blocking payment → MI removal refi path vs LTV reduction vs piggyback restructure (where applicable)
+14. Delayed financing after cash purchase → reinvest liquidity without waiting 6-month seasoning (Conv delayed financing rules)
+15. Recent credit event (BK/SS/DIL seasoning) → Non-QM seasoning lanes vs FHA/VA if eligible; timeline math
+16. Divorce decree income (alimony/child support) → qualifying income docs, continuance, receipt history
+17. Trust or estate income beneficiary → trust agreement, distribution history, letter from trustee/CPA
+18. STR/Airbnb income → bank statement or DSCR depending on property; seasonality documentation
+19. Multiple REO/investment acquisitions → DSCR per property; cross-collateral considerations at high level
+20. Asset depletion ONLY when retiree/HNW with thin documented income AND large qualified liquid assets (36- or 60-month lookback). Do not use this path as the campaign default.
 
 SUBJECT LINE HOOK PATTERNS (adapt to scenario — do not copy verbatim):
-- "That 'unqualifiable' retiree with $1.4M in the bank? You already have their email."
-- "AUS said no. Asset depletion said yes. You ran it once."
-- "Your competitor closed this with 24-month bank statements. You sent a denial."
 - "DTI 54% on Conv. DTI irrelevant on DSCR. Same borrower."
 - "Stop treating every DTI fail like an FHA referral."
+- "Your competitor closed this with 24-month bank statements. You sent a denial."
+- "Unused VA entitlement is sitting in your CRM."
+- "USDA-eligible and nobody ran the map."
 
 Every scenario email MUST include: specific borrower profile, failed first path + WHY, innovative second path + HOW (docs, lookback, calculation approach), and numbered broker actions to mine similar files this week.
 `.trim();
@@ -126,7 +133,7 @@ MANDATORY STRUCTURE:
 (7) "Mine your pipeline" — how to find 3 more files like this today
 (8) Lesson: what most brokers get wrong (often: one AUS run, default FHA pivot, or no Non-QM awareness)
 
-BANNED: Conv DTI fail → FHA as default answer. FHA is NOT your go-to DTI rescue — use Non-QM (asset depletion, bank statement, DSCR), Conv restructure, VA if eligible, or debt consolidation first.`,
+BANNED: Conv DTI fail → FHA as default answer. FHA is NOT your go-to DTI rescue — use DSCR, bank statement, Conv restructure, VA if eligible, or debt consolidation first. Do not default to asset depletion.`,
 
   scenario_desk: `SCENARIO DESK — deep-dive file analysis that makes brokers call UFF.
 
@@ -134,13 +141,13 @@ Present ONE intricate, realistic borrower file. Walk through how a senior scenar
 - Initial broker submission (what they got wrong)
 - Guideline friction points (DTI, income calc, assets, occupancy, credit seasoning)
 - 2–3 viable paths ranked by likelihood — at least one must be Non-QM or advanced Conv restructure
-- Doc strategy per path (statements months, asset depletion lookback, lease/rent roll, CPA letter, etc.)
+- Doc strategy per path (statement months, lease/rent roll, CPA letter, residual income, etc.)
 - Risk flags and how to pre-clear with underwriting
 - Exact next action: "Run this in PRO Portal scenario desk with these docs"
 
-Subject line = specific file tease ("62yo retiree, $1.1M IRA, $4k SS — who runs asset depletion?").
+Subject line = specific file tease ("6 rentals, personal DTI blown — who ran DSCR?").
 
-BANNED: shallow analysis ending in "try FHA." No fabricated rates or guaranteed approvals.`,
+BANNED: shallow analysis ending in "try FHA." No fabricated rates or guaranteed approvals. Do not default to asset depletion.`,
 
   broker_business_growth_tip: `BROKER GROWTH campaign. Business development — realtor/CPA/FA/builder (referral partner for completed-home purchase, NOT construction loans)/investor/veteran niche/self-employed mining. Concrete weekly actions to create pipeline.`,
 
@@ -162,7 +169,7 @@ BANNED: shallow analysis ending in "try FHA." No fabricated rates or guaranteed 
 
   usda_product_spotlight: `PRODUCT SPOTLIGHT — USDA. Eligibility mindset, rural/suburban opportunities, compliant program wording.`,
 
-  non_qm_product_spotlight: `PRODUCT SPOTLIGHT — Non-QM. Pick ONE lane (DSCR, bank statement 12/24mo, asset depletion 36/60mo, IO, foreign national, 1099, P&L-only) and go surgical: borrower identification signals, income calc methodology at high level, doc stack, common broker mistakes, 3 pipeline search filters to find candidates today. Open with a "you're sitting on these files" hook.`,
+  non_qm_product_spotlight: `PRODUCT SPOTLIGHT — Non-QM. Pick ONE lane and rotate across campaigns (DSCR, bank statement 12/24mo, IO, foreign national, 1099, P&L-only, jumbo). Asset depletion is allowed only occasionally when the file is retiree/HNW thin-income — not the default Non-QM story. Go surgical: borrower identification signals, income calc methodology at high level, doc stack, common broker mistakes, 3 pipeline search filters to find candidates today. Open with a "you're sitting on these files" hook.`,
 
   jumbo_product_spotlight: `PRODUCT SPOTLIGHT — Jumbo. HNW/executive scenarios, documentation expectations, relationship referrals.`,
 
@@ -183,6 +190,11 @@ BANNED: shallow analysis ending in "try FHA." No fabricated rates or guaranteed 
   weekly_broker_newsletter: `Weekly intelligence digest: 2–3 actionable sections (market + product/scenario tip + operations). No fluff intro.`,
 
   re_engagement_campaign: `Re-engage inactive broker partners. Remind of scenario support and niches they may be missing — invite back to PRO Portal for live files.`,
+
+  custom_prompt: `CUSTOM OPERATOR PROMPT — this is the assignment. Follow the operator prompt closely for topic, audience, and angle.
+Still deliver broker intelligence (specific file narrative, numbered actions, UFF-accurate products).
+Unless the operator prompt names a product, rotate across Conventional, FHA, VA, USDA, DSCR, bank statement, jumbo, IO, foreign national, streamlines, or ops/growth — do not default to asset depletion.
+Keep email tone (injected separately) for voice only; the operator prompt drives substance.`,
 };
 
 /** Fluff signals that suggest generic marketing, not broker intelligence. */
@@ -282,7 +294,7 @@ export function getCampaignTypeIntelligence(campaignType: CampaignType): string 
     CAMPAIGN_TYPE_GUIDANCE[campaignType] ??
     `Campaign type: ${campaignType}. Apply Broker Growth Engine — actionable broker intelligence, not advertising.`;
 
-  if (ADVANCED_SCENARIO_CAMPAIGN_TYPES.has(campaignType)) {
+  if (campaignType === "custom_prompt" || ADVANCED_SCENARIO_CAMPAIGN_TYPES.has(campaignType)) {
     return `${base}\n\n${ADVANCED_STRUCTURING_PLAYBOOK}`;
   }
   return base;
@@ -296,7 +308,7 @@ export function evaluateEducationalValue(
     email_subject?: string;
     preview_text?: string;
   },
-  opts: { campaignType?: CampaignType } = {}
+  opts: { campaignType?: CampaignType; customPrompt?: string } = {}
 ): { passes: boolean; reasons: string[] } {
   const combined = [
     content.email_subject,
@@ -347,12 +359,20 @@ export function evaluateEducationalValue(
     }
 
     const lazyFha = LAZY_RESCUE_PATTERNS.some((p) => p.test(rawCombined));
-    const hasInnovativePath = ["asset depletion", "bank statement", "dscr", "foreign national", "1099", "interest-only"].some(
+    const hasInnovativePath = ["bank statement", "dscr", "foreign national", "1099", "interest-only", "va loan", "usda", "jumbo", "irrrl", "cash-out"].some(
       (s) => plain.includes(s)
     );
     if (lazyFha && !hasInnovativePath) {
       reasons.push("Lazy FHA pivot without innovative Non-QM or advanced structuring path");
     }
+  }
+
+  const promptAsksAssetDepletion = /asset\s*depletion/i.test(opts.customPrompt ?? "");
+  const adMentions = plain.match(/asset depletion/g)?.length ?? 0;
+  if (!promptAsksAssetDepletion && adMentions >= 2) {
+    reasons.push(
+      "Overuses asset depletion — rotate across Conventional, FHA, VA, USDA, DSCR, bank statement, jumbo, and other lanes"
+    );
   }
 
   const passes = reasons.length === 0;
@@ -363,7 +383,7 @@ export const EDUCATIONAL_RETRY_INSTRUCTION = `
 REJECTED DRAFT: Prior output failed broker intelligence check (too generic, lazy rescue path, or not actionable).
 Regenerate with:
 - Scroll-stopping subject line + specific borrower file narrative
-- INNOVATIVE legal structuring from ADVANCED STRUCTURING PLAYBOOK — NOT default Conv→FHA
+- INNOVATIVE legal structuring — rotate product lanes; NOT default Conv→FHA and NOT default asset depletion
 - Product lane name, lookback/doc details, numbered broker action steps
 - Zero marketing fluff
 Never mention construction loans or construction-to-perm — UFF does not offer them.

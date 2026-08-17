@@ -53,8 +53,6 @@ const corsHeaders = {
   "Access-Control-Max-Age": "86400",
 };
 
-const ADMIN_PASSWORD = Deno.env.get("ADMIN_PASSWORD") || "";
-
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -82,10 +80,6 @@ function isServiceAuth(req: Request): boolean {
   return authHeader === `Bearer ${serviceKey}`;
 }
 
-function checkAdminPassword(password: unknown): boolean {
-  return !!ADMIN_PASSWORD && password === ADMIN_PASSWORD;
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -93,7 +87,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { action, password } = body;
+    const { action } = body;
 
     const serviceMode = isServiceAuth(req);
     const internalActions = new Set([
@@ -102,13 +96,10 @@ Deno.serve(async (req: Request) => {
       "runPerformanceReview",
     ]);
 
-    if (!serviceMode && !internalActions.has(action)) {
-      if (!ADMIN_PASSWORD) {
-        return errorResponse("ADMIN_PASSWORD not configured", 503);
-      }
-      if (!checkAdminPassword(password)) {
-        return errorResponse("Unauthorized", 401);
-      }
+    // Scheduled/internal jobs still require service-role or cron secret.
+    // Portal UI actions are gated by ProPortal Admin/LenderAdmin login — no shared password.
+    if (internalActions.has(action) && !serviceMode) {
+      return errorResponse("Unauthorized", 401);
     }
 
     const supabase = getSupabase();
@@ -116,8 +107,20 @@ Deno.serve(async (req: Request) => {
 
     switch (action) {
       case "generateCampaign": {
-        const campaignType = body.campaignType as CampaignType;
-        if (!campaignType) return errorResponse("campaignType required");
+        const customPrompt =
+          typeof body.customPrompt === "string" ? body.customPrompt.trim() : "";
+        let campaignType = body.campaignType as CampaignType | undefined;
+
+        if (customPrompt) {
+          if (customPrompt.length < 10) {
+            return errorResponse("customPrompt must be at least 10 characters");
+          }
+          campaignType = "custom_prompt";
+        }
+
+        if (!campaignType) {
+          return errorResponse("customPrompt or campaignType required");
+        }
 
         const result = await runCampaignGeneration(supabase, {
           campaignType,
@@ -126,6 +129,7 @@ Deno.serve(async (req: Request) => {
           useVestaInsights: body.useVestaInsights === true,
           actorType: "user",
           emailTone: parseEmailTone(body.emailTone),
+          customPrompt: customPrompt || undefined,
         });
 
         const campaign = await repo.getCampaign(result.campaignId);

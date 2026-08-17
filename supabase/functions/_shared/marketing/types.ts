@@ -24,6 +24,7 @@ export const CAMPAIGN_TYPES = [
   "compliance_guidelines",
   "weekly_broker_newsletter",
   "re_engagement_campaign",
+  "custom_prompt",
 ] as const;
 
 export type CampaignType = (typeof CAMPAIGN_TYPES)[number];

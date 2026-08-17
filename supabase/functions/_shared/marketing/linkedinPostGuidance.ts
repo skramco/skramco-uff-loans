@@ -25,9 +25,9 @@ Additional rules:
 
 const CAMPAIGN_HASHTAG_HINTS: Partial<Record<CampaignType, string>> = {
   loan_rescue:
-    "#LoanRescue #DealStructuring #MortgageUnderwriting #DTI #AlternativeLending #NonQM #AssetDepletion #BankStatementLoan #DSCR #ScenarioDesk",
+    "#LoanRescue #DealStructuring #MortgageUnderwriting #DTI #AlternativeLending #NonQM #BankStatementLoan #DSCR #VALoan #ConventionalLoan #ScenarioDesk",
   scenario_desk:
-    "#ScenarioDesk #MortgageUnderwriting #ComplexIncome #SelfEmployed #AssetDepletion #BankStatementLoan #DSCR #MortgageBroker #LoanStructuring",
+    "#ScenarioDesk #MortgageUnderwriting #ComplexIncome #SelfEmployed #BankStatementLoan #DSCR #VALoan #MortgageBroker #LoanStructuring",
   broker_business_growth_tip:
     "#MortgageBroker #BusinessDevelopment #ReferralMarketing #LoanOfficer #WholesaleLending #MortgageIndustry",
   broker_growth:
@@ -49,7 +49,7 @@ const CAMPAIGN_HASHTAG_HINTS: Partial<Record<CampaignType, string>> = {
   usda_product_spotlight:
     "#USDALoan #RuralHousing #MortgageBroker #FirstTimeHomeBuyer",
   non_qm_product_spotlight:
-    "#NonQM #DSCR #BankStatementLoan #SelfEmployed #AssetDepletion #Investor #MortgageBroker",
+    "#NonQM #DSCR #BankStatementLoan #SelfEmployed #Investor #InterestOnly #ForeignNational #MortgageBroker",
   jumbo_product_spotlight:
     "#JumboLoan #NonQM #HighNetWorth #MortgageBroker #LuxuryRealEstate",
   pro_portal_feature_spotlight:
@@ -70,6 +70,8 @@ const CAMPAIGN_HASHTAG_HINTS: Partial<Record<CampaignType, string>> = {
     "#MortgageBroker #WholesaleMortgage #MortgageIndustry #MortgageRates #LoanOfficer",
   re_engagement_campaign:
     "#WholesaleMortgage #MortgageBroker #PROPortal #UnitedFidelityFunding",
+  custom_prompt:
+    "#MortgageBroker #WholesaleMortgage #ConventionalLoan #FHA #VALoan #USDALoan #DSCR #BankStatementLoan #JumboLoan #LoanOfficer",
 };
 
 const DEFAULT_HASHTAGS =
