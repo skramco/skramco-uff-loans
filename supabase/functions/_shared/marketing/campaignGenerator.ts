@@ -1,8 +1,11 @@
 import {
   BROKER_GROWTH_ENGINE_PROMPT,
+  CUSTOM_OPERATOR_SYSTEM_PROMPT,
   EDUCATIONAL_RETRY_INSTRUCTION,
   evaluateEducationalValue,
   getCampaignTypeIntelligence,
+  OPERATOR_PROMPT_RETRY_INSTRUCTION,
+  promptRequestsProductIntelligence,
   UFF_WHOLESALE_PRODUCT_MENU,
 } from "./brokerIntelligenceContext.ts";
 import { BRAND_SYSTEM_PROMPT, evaluateCompliance } from "./complianceGuardrails.ts";
@@ -66,12 +69,22 @@ export function buildSystemPrompt(
   emailTone: EmailTone = DEFAULT_EMAIL_TONE,
   toneOpts: EmailTonePromptOptions = {}
 ): string {
-  const parts = [BROKER_GROWTH_ENGINE_PROMPT, BRAND_SYSTEM_PROMPT];
-  if (templateSystem?.trim()) {
+  const parts: string[] = [];
+  if (toneOpts.operatorAssignment) {
+    parts.push(CUSTOM_OPERATOR_SYSTEM_PROMPT);
+  } else {
+    parts.push(BROKER_GROWTH_ENGINE_PROMPT);
+  }
+  parts.push(BRAND_SYSTEM_PROMPT);
+  if (templateSystem?.trim() && !toneOpts.operatorAssignment) {
     parts.push(`Additional template rules:\n${templateSystem.trim()}`);
   }
   parts.push(getEmailToneSystemPromptBlock(emailTone, toneOpts));
   return parts.join("\n\n");
+}
+
+function isOperatorAssignment(options: Pick<GenerateOptions, "campaignType" | "customPrompt">): boolean {
+  return options.campaignType === "custom_prompt" || Boolean(options.customPrompt?.trim());
 }
 
 export interface GenerateOptions {
@@ -98,33 +111,38 @@ function parseGeneratedJson(raw: string): Record<string, unknown> {
 
 export function buildUserPrompt(options: GenerateOptions): string {
   const customPrompt = options.customPrompt?.trim();
-  const isCustom = options.campaignType === "custom_prompt" || Boolean(customPrompt);
-  const parts: string[] = [getCampaignTypeIntelligence(options.campaignType)];
-
-  if (isCustom || PRODUCT_INTELLIGENCE_TYPES.has(options.campaignType)) {
-    parts.push(`\n${UFF_WHOLESALE_PRODUCT_MENU}`);
-  }
+  const isCustom = isOperatorAssignment(options);
+  const parts: string[] = [];
 
   if (isCustom && customPrompt) {
     parts.push(
-      `OPERATOR PROMPT (primary assignment — this drives the campaign topic, audience, and angle):\n${customPrompt}`
+      `OPERATOR PROMPT — EXCLUSIVE ASSIGNMENT (topic, facts, dates, hours, audience, and CTA come from this text — 100%):\n"""\n${customPrompt}\n"""\nDo not substitute a DSCR, Non-QM, or loan-rescue flyer. Hero image and LinkedIn must match this prompt. UFF branding + email BODY FRAGMENT format still apply.`
     );
-    if (options.template?.prompt_user) {
-      parts.push(`Additional template instructions:\n${options.template.prompt_user}`);
-    }
-  } else if (options.template?.prompt_user) {
-    parts.push(`Template instructions:\n${options.template.prompt_user}`);
+    parts.push(getCampaignTypeIntelligence("custom_prompt"));
   } else {
+    parts.push(getCampaignTypeIntelligence(options.campaignType));
+  }
+
+  const includeProductMenu =
+    PRODUCT_INTELLIGENCE_TYPES.has(options.campaignType) ||
+    (isCustom && customPrompt ? promptRequestsProductIntelligence(customPrompt) : false);
+  if (includeProductMenu) {
+    parts.push(`\n${UFF_WHOLESALE_PRODUCT_MENU}`);
+  }
+
+  if (options.template?.prompt_user && !isCustom) {
+    parts.push(`Template instructions:\n${options.template.prompt_user}`);
+  } else if (!isCustom) {
     parts.push(`Generate a ${options.campaignType} marketing campaign.`);
   }
 
-  if (options.vestaInsights?.length) {
+  if (options.vestaInsights?.length && !isCustom) {
     parts.push(
       `\nOperational insights (aggregate, non-PII — use carefully, set uses_vesta_insights: true):\n${options.vestaInsights.join("\n")}`
     );
   }
 
-  if (options.performanceSummary) {
+  if (options.performanceSummary && !isCustom) {
     parts.push(`\nPast campaign performance context:\n${options.performanceSummary}`);
   }
 
@@ -149,18 +167,33 @@ export function buildUserPrompt(options: GenerateOptions): string {
     }
   }
 
-  if (needsProPortalContext(options.campaignType)) {
+  if (isCustom) {
+    parts.push(
+      `\nPRO PORTAL: The branded email template already adds a CTA button. Do not invent portal features. Mention PRO Portal only if the operator prompt is about origination workflow.`
+    );
+  } else if (needsProPortalContext(options.campaignType)) {
     parts.push(`\n${PRO_PORTAL_PRODUCT_CONTEXT}`);
   }
 
   parts.push(`\n${LINKEDIN_POST_GUIDANCE}`);
+  if (isCustom) {
+    parts.push(
+      "LINKEDIN TOPIC: Body copy must match the OPERATOR PROMPT. Do not write a DSCR/structuring lesson unless that is the prompt."
+    );
+  }
   parts.push(`\n${getLinkedInHashtagHints(options.campaignType)}`);
   parts.push(`\n${CANVA_PROMPT_GUIDANCE}`);
+  if (isCustom) {
+    parts.push(
+      "HERO IMAGE: canva_prompt must illustrate the OPERATOR PROMPT (e.g. holiday hours, an event, an ops notice) — not a default DSCR or office-stock product flyer."
+    );
+  }
 
   const tone = options.emailTone ?? DEFAULT_EMAIL_TONE;
   parts.push(
     `\n${getEmailTonePromptBlock(tone, {
       realTimeContext: options.realTimeContext ?? undefined,
+      operatorAssignment: isCustom,
     })}`
   );
 
@@ -208,8 +241,13 @@ export async function generateCampaignContent(
 ): Promise<GeneratedCampaignContent> {
   const template = options.template ?? (await repo.getTemplateByType(options.campaignType));
   const emailTone = options.emailTone ?? DEFAULT_EMAIL_TONE;
-  const toneOpts: EmailTonePromptOptions = {};
-  const systemPrompt = buildSystemPrompt(template?.prompt_system, emailTone, toneOpts);
+  const operatorAssignment = isOperatorAssignment(options);
+  const toneOpts: EmailTonePromptOptions = { operatorAssignment };
+  const systemPrompt = buildSystemPrompt(
+    operatorAssignment ? null : template?.prompt_system,
+    emailTone,
+    toneOpts
+  );
 
   let marketDataSummary: string | null = null;
   if (options.campaignType === DAILY_BRIEFING_CAMPAIGN_TYPE) {
@@ -223,7 +261,11 @@ export async function generateCampaignContent(
   }
 
   let realTimeContext: string | undefined;
-  if (emailTone === "real_time" && options.campaignType !== DAILY_BRIEFING_CAMPAIGN_TYPE) {
+  if (
+    emailTone === "real_time" &&
+    options.campaignType !== DAILY_BRIEFING_CAMPAIGN_TYPE &&
+    !operatorAssignment
+  ) {
     try {
       realTimeContext = await fetchRealTimeContext();
     } catch (e) {
@@ -263,7 +305,10 @@ export async function generateCampaignContent(
     }
     if (!edu.passes) {
       console.warn("Broker intelligence check failed, regenerating:", edu.reasons);
-      userPrompt = `${userPrompt}\n\n${EDUCATIONAL_RETRY_INSTRUCTION}\nFailure reasons: ${edu.reasons.join("; ")}`;
+      const retry = operatorAssignment
+        ? OPERATOR_PROMPT_RETRY_INSTRUCTION
+        : EDUCATIONAL_RETRY_INSTRUCTION;
+      userPrompt = `${userPrompt}\n\n${retry}\nFailure reasons: ${edu.reasons.join("; ")}`;
       continue;
     }
     console.warn("Tone check failed, regenerating:", toneCheck.reasons, "tone:", emailTone);
@@ -394,7 +439,8 @@ export async function regenerateField(
   campaignType: CampaignType,
   field: "subject" | "linkedin" | "canva_prompt" | "email_html",
   currentContent: Partial<GeneratedCampaignContent>,
-  emailToneOverride?: EmailTone
+  emailToneOverride?: EmailTone,
+  customPrompt?: string
 ): Promise<Partial<GeneratedCampaignContent>> {
   const fieldMap: Record<string, string> = {
     subject: "Regenerate only the email_subject and preview_text fields as JSON: { email_subject, preview_text }",
@@ -414,10 +460,22 @@ export async function regenerateField(
       toneContext = undefined;
     }
   }
-  const toneOpts: EmailTonePromptOptions = { realTimeContext: toneContext };
-  const systemPrompt = buildSystemPrompt(template?.prompt_system, emailTone, toneOpts);
+  const operatorAssignment =
+    campaignType === "custom_prompt" || Boolean(customPrompt?.trim());
+  const toneOpts: EmailTonePromptOptions = {
+    realTimeContext: toneContext,
+    operatorAssignment,
+  };
+  const systemPrompt = buildSystemPrompt(
+    operatorAssignment ? null : template?.prompt_system,
+    emailTone,
+    toneOpts
+  );
 
   let userPrompt = `${fieldMap[field]}\n\nCurrent campaign context:\n${JSON.stringify(currentContent, null, 2)}`;
+  if (customPrompt?.trim()) {
+    userPrompt += `\n\nOPERATOR PROMPT — keep this topic 100% (do not pivot to DSCR or a product flyer):\n"""\n${customPrompt.trim()}\n"""`;
+  }
   userPrompt += `\n\n${getEmailTonePromptBlock(emailTone, toneOpts)}`;
   if (field === "linkedin") {
     userPrompt += `\n\n${getLinkedInHashtagHints(campaignType)}`;

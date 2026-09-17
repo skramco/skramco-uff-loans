@@ -71,7 +71,7 @@ const CAMPAIGN_HASHTAG_HINTS: Partial<Record<CampaignType, string>> = {
   re_engagement_campaign:
     "#WholesaleMortgage #MortgageBroker #PROPortal #UnitedFidelityFunding",
   custom_prompt:
-    "#MortgageBroker #WholesaleMortgage #ConventionalLoan #FHA #VALoan #USDALoan #DSCR #BankStatementLoan #JumboLoan #LoanOfficer",
+    "#UnitedFidelityFunding #UFFMortgage #WholesaleMortgage #MortgageBroker #LoanOfficer",
 };
 
 const DEFAULT_HASHTAGS =
@@ -79,5 +79,8 @@ const DEFAULT_HASHTAGS =
 
 export function getLinkedInHashtagHints(campaignType: CampaignType): string {
   const specific = CAMPAIGN_HASHTAG_HINTS[campaignType] ?? DEFAULT_HASHTAGS;
+  if (campaignType === "custom_prompt") {
+    return `Hashtag block (section 3 — after landing link, before PRO Portal link). Match hashtags to the OPERATOR PROMPT topic. Do not default to product tags (#DSCR, #BankStatementLoan) unless the prompt is about that product.\n${specific}\n${DEFAULT_HASHTAGS}`;
+  }
   return `Hashtag block (section 3 — after landing link, before PRO Portal link). Pick 8–15 from:\n${specific}\n${DEFAULT_HASHTAGS}`;
 }

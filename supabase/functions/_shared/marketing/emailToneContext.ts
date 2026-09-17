@@ -227,7 +227,18 @@ FUNNY TONE — VOICE (borderline insulting, never corny):
 - canva_prompt: visual punchline for the roast (broker asleep at pipeline wheel, competitor closing with bank statements, etc.).
 `.trim();
 
-function funnyToneBlock(): string {
+function funnyToneBlock(operatorAssignment = false): string {
+  if (operatorAssignment) {
+    return `
+EMAIL TONE: FUNNY — VOICE ONLY (operator prompt is the topic)
+- NO profanity, slurs, sexual content, innuendo, or crude body humor.
+- NO mocking borrowers, veterans, protected classes, or individuals.
+- Be edgy and funny about the OPERATOR PROMPT topic (holiday hours, an event, an ops notice, etc.).
+- Do NOT pivot to loan rescue, DSCR, bank statements, AUS roast, or a borrower-file scenario unless the operator prompt is about that.
+- Subject line can sting or tease, but it must still be about the operator prompt.
+- canva_prompt: visual punchline for THIS topic — not a default product flyer.
+`.trim();
+  }
   return `
 EMAIL TONE: FUNNY — BORDERLINE INSULTING WHOLESALE HUMOR
 ${FUNNY_TONE_BOUNDARIES}
@@ -241,7 +252,15 @@ Tone reference (style only — do not copy verbatim):
 `.trim();
 }
 
-function urgencyToneBlock(): string {
+function urgencyToneBlock(operatorAssignment = false): string {
+  if (operatorAssignment) {
+    return `
+EMAIL TONE: URGENCY — VOICE ONLY (operator prompt is the topic)
+- Time-sensitive language about the OPERATOR PROMPT (hours that change, a deadline, an event) — not a fake rate expiration or DSCR rescue.
+- Subject/preview can convey "act now" without false scarcity.
+- NEVER promise guaranteed approval, lowest rates, or deceptive urgency about pricing.
+`.trim();
+  }
   return `
 EMAIL TONE: URGENCY (motivate immediate action — compliance-safe)
 - Create a genuine sense of timeliness: pipeline deadlines, expiring conditions, end-of-week submission windows, market windows brokers should act on.
@@ -254,7 +273,14 @@ EMAIL TONE: URGENCY (motivate immediate action — compliance-safe)
 `.trim();
 }
 
-function realTimeToneBlock(): string {
+function realTimeToneBlock(operatorAssignment = false): string {
+  if (operatorAssignment) {
+    return `
+EMAIL TONE: REAL-TIME — VOICE ONLY (operator prompt is the topic)
+- You may date the email as of today, but do NOT replace the OPERATOR PROMPT with a market-commentary or rate flyer.
+- Subject, preview, body, LinkedIn, and canva_prompt stay on the operator prompt.
+`.trim();
+  }
   return `
 EMAIL TONE: REAL-TIME (today's events drive every recommendation)
 - A REAL-TIME CONTEXT block is appended below — it is your primary source for "what's happening today."
@@ -270,6 +296,8 @@ export interface EmailTonePromptOptions {
   realTimeContext?: string;
   /** Picked once per campaign — keeps prompts and validation aligned. */
   funnyWord?: string;
+  /** Operator wrote the assignment — tone is voice only; do not change the topic. */
+  operatorAssignment?: boolean;
 }
 
 /** Prompt block injected into campaign generation when a tone is active. */
@@ -283,12 +311,12 @@ export function getEmailTonePromptBlock(
     case "standard":
       return standardToneBlock(getMotivationalQuoteOfTheDay(ref));
     case "funny":
-      return funnyToneBlock();
+      return funnyToneBlock(opts.operatorAssignment === true);
     case "urgency":
-      return urgencyToneBlock();
+      return urgencyToneBlock(opts.operatorAssignment === true);
     case "real_time": {
-      const base = realTimeToneBlock();
-      if (opts.realTimeContext?.trim()) {
+      const base = realTimeToneBlock(opts.operatorAssignment === true);
+      if (opts.realTimeContext?.trim() && !opts.operatorAssignment) {
         return `${base}\n\n${opts.realTimeContext.trim()}`;
       }
       return base;
@@ -319,6 +347,20 @@ EMAIL TONE: STANDARD — voice/style requirements (compliance rules still apply)
   }
 
   if (tone === "funny") {
+    if (opts.operatorAssignment) {
+      return `
+CRITICAL EMAIL TONE OVERRIDE: FUNNY — voice only. The OPERATOR PROMPT is the topic.
+Do NOT output a DSCR / loan-rescue flyer unless the operator prompt asks for that.
+NO profanity, slurs, sexual content, or mocking borrowers.
+
+MANDATORY:
+1. email_subject — witty or pointed, still about the operator prompt.
+2. email_html — funny take on the operator prompt. No dad jokes. No product substitution.
+3. linkedin_post — same topic and energy.
+4. canva_prompt — visual punchline for THIS prompt.
+5. Do NOT include a motivational quote of the day (Standard tone only).
+`.trim();
+    }
     return `
 CRITICAL EMAIL TONE OVERRIDE: FUNNY (BORDERLINE INSULTING) — this OVERRIDES any "professional", "corporate", or "transactional" voice instructions above.
 The user selected FUNNY. Do NOT output dry, standard, or corny broker newsletter copy.
@@ -336,6 +378,14 @@ MANDATORY (verify before finishing JSON):
   }
 
   if (tone === "urgency") {
+    if (opts.operatorAssignment) {
+      return `
+CRITICAL EMAIL TONE OVERRIDE: URGENCY — voice only. The OPERATOR PROMPT is the topic.
+MANDATORY:
+1. Time-sensitive language about the operator prompt (hours, deadline, event) — no fake rate expirations, no DSCR rescue.
+2. Do NOT include a motivational quote of the day.
+`.trim();
+    }
     return `
 CRITICAL EMAIL TONE OVERRIDE: URGENCY — this OVERRIDES neutral/corporate pacing above.
 The user selected URGENCY. Copy must feel time-sensitive and action-driven.
@@ -346,6 +396,14 @@ MANDATORY:
 3. linkedin_post — open with a time-sensitive hook.
 4. canva_prompt — dynamic forward-motion energy.
 5. Do NOT include a motivational quote of the day.
+`.trim();
+  }
+
+  if (opts.operatorAssignment) {
+    return `
+CRITICAL EMAIL TONE OVERRIDE: REAL-TIME — voice only. The OPERATOR PROMPT is the topic.
+You may date the email as of today. Do NOT replace the operator prompt with a market-commentary flyer.
+Do NOT include a motivational quote of the day.
 `.trim();
   }
 

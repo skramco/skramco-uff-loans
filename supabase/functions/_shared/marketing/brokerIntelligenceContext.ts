@@ -191,11 +191,38 @@ BANNED: shallow analysis ending in "try FHA." No fabricated rates or guaranteed 
 
   re_engagement_campaign: `Re-engage inactive broker partners. Remind of scenario support and niches they may be missing — invite back to PRO Portal for live files.`,
 
-  custom_prompt: `CUSTOM OPERATOR PROMPT — this is the assignment. Follow the operator prompt closely for topic, audience, and angle.
-Still deliver broker intelligence (specific file narrative, numbered actions, UFF-accurate products).
-Unless the operator prompt names a product, rotate across Conventional, FHA, VA, USDA, DSCR, bank statement, jumbo, IO, foreign national, streamlines, or ops/growth — do not default to asset depletion.
-Keep email tone (injected separately) for voice only; the operator prompt drives substance.`,
+  custom_prompt: `CUSTOM OPERATOR PROMPT — exclusive content assignment.
+The operator prompt in the user message is the SOLE brief for this campaign. Write the email, LinkedIn post, and hero image ABOUT THAT PROMPT — hours, dates, events, announcements, ops notices, or product education, whatever they wrote.
+Do NOT add product education, DSCR, bank statement, loan rescue, scenario desk, borrower-file narratives, or product rotation unless the operator prompt explicitly asks for that topic.
+Do NOT "help brokers close more loans" by substituting a default Non-QM / DSCR flyer.
+Keep UFF branding, broker-facing audience, compliance rules, JSON schema, and email BODY FRAGMENT format.
+Email tone (injected separately) changes VOICE only — never the topic.`,
 };
+
+/** System-prompt override when an operator wrote the campaign assignment. */
+export const CUSTOM_OPERATOR_SYSTEM_PROMPT = `
+OPERATOR ASSIGNMENT MODE — this overrides Broker Growth Engine / product rotation for TOPIC.
+The user message contains OPERATOR PROMPT. That text is the exclusive content brief.
+
+YOU MUST:
+- Write title, subject, preview, email body, LinkedIn, CTA, and canva_prompt about the operator prompt only.
+- Keep UFF branding, broker-facing voice, compliance guardrails, JSON schema, and email BODY FRAGMENT format (the system wraps the official UFF template).
+
+YOU MUST NOT:
+- Pivot to DSCR, bank statement, loan rescue, scenario desk, product rotation, or a borrower-file story unless the operator prompt asks for that.
+- Treat "broker intelligence", "actionable steps", or product-menu rules as a reason to ignore the operator prompt.
+- Pad a holiday-hours / ops / event notice with a default product flyer.
+
+Email tone changes voice (funny, urgent, quote of the day) — not the subject matter.
+`.trim();
+
+export const OPERATOR_PROMPT_RETRY_INSTRUCTION = `
+REJECTED DRAFT: Prior output ignored the OPERATOR PROMPT and wrote a different campaign (often a default product / DSCR flyer).
+Regenerate the FULL JSON about the OPERATOR PROMPT only.
+- Use the operator's facts, dates, hours, event, or topic as the email — 100%.
+- Keep UFF branding and BODY FRAGMENT email format.
+- Do NOT mention DSCR, bank statement, loan rescue, or product rotation unless the operator prompt asks for them.
+`.trim();
 
 /** Fluff signals that suggest generic marketing, not broker intelligence. */
 const GENERIC_FLUFF_PHRASES = [
@@ -294,10 +321,125 @@ export function getCampaignTypeIntelligence(campaignType: CampaignType): string 
     CAMPAIGN_TYPE_GUIDANCE[campaignType] ??
     `Campaign type: ${campaignType}. Apply Broker Growth Engine — actionable broker intelligence, not advertising.`;
 
-  if (campaignType === "custom_prompt" || ADVANCED_SCENARIO_CAMPAIGN_TYPES.has(campaignType)) {
+  if (ADVANCED_SCENARIO_CAMPAIGN_TYPES.has(campaignType)) {
     return `${base}\n\n${ADVANCED_STRUCTURING_PLAYBOOK}`;
   }
   return base;
+}
+
+const PRODUCT_LANE_TERMS = [
+  "dscr",
+  "bank statement",
+  "asset depletion",
+  "foreign national",
+  "interest-only",
+  "interest only",
+  "non-qm",
+  "nonqm",
+  "irrrl",
+  "jumbo",
+  "usda",
+  "conventional",
+  "va loan",
+  "fha",
+];
+
+/** True when the operator prompt is itself a product / structuring assignment. */
+export function promptRequestsProductIntelligence(prompt: string): boolean {
+  const p = prompt.toLowerCase();
+  return (
+    PRODUCT_LANE_TERMS.some((t) => p.includes(t)) ||
+    /\b(loan rescue|scenario desk|product spotlight|underwriting|dti)\b/i.test(prompt)
+  );
+}
+
+const OPERATOR_PROMPT_STOPWORDS = new Set([
+  "please",
+  "write",
+  "create",
+  "make",
+  "generate",
+  "campaign",
+  "email",
+  "about",
+  "this",
+  "that",
+  "with",
+  "from",
+  "your",
+  "their",
+  "want",
+  "need",
+  "just",
+  "would",
+  "could",
+  "should",
+  "into",
+  "broker",
+  "brokers",
+  "wholesale",
+  "mortgage",
+  "portal",
+  "united",
+  "fidelity",
+  "funding",
+  "using",
+  "send",
+  "telling",
+  "partners",
+  "partner",
+  "announcement",
+  "flyer",
+  "flyers",
+]);
+
+function distinctivePromptTokens(text: string): string[] {
+  const words = text.toLowerCase().match(/[a-z0-9]{4,}/g) ?? [];
+  return [...new Set(words.filter((w) => !OPERATOR_PROMPT_STOPWORDS.has(w)))];
+}
+
+export function evaluateOperatorPromptFidelity(
+  customPrompt: string,
+  content: string
+): { passes: boolean; reasons: string[] } {
+  const prompt = customPrompt.trim();
+  if (!prompt) return { passes: true, reasons: [] };
+
+  const reasons: string[] = [];
+  const hay = content.toLowerCase().replace(/<[^>]+>/g, " ");
+  const tokens = distinctivePromptTokens(prompt);
+
+  if (tokens.length >= 2) {
+    const hits = tokens.filter((t) => hay.includes(t));
+    const ratio = hits.length / tokens.length;
+    const minHits = Math.min(2, tokens.length);
+    if (hits.length < minHits && ratio < 0.25) {
+      const missing = tokens.filter((t) => !hay.includes(t)).slice(0, 8);
+      reasons.push(
+        `Draft does not follow the operator prompt (missing key details: ${missing.join(", ")})`
+      );
+    }
+  }
+
+  if (!promptRequestsProductIntelligence(prompt)) {
+    const defaultFlyerLanes = [
+      "dscr",
+      "bank statement",
+      "asset depletion",
+      "foreign national",
+      "interest-only",
+      "non-qm",
+      "nonqm",
+    ];
+    const productHits = defaultFlyerLanes.filter((t) => hay.includes(t));
+    if (productHits.length >= 1) {
+      reasons.push(
+        `Draft substituted a ${productHits[0]} product flyer for the operator prompt`
+      );
+    }
+  }
+
+  return { passes: reasons.length === 0, reasons };
 }
 
 export function evaluateEducationalValue(
@@ -333,9 +475,8 @@ export function evaluateEducationalValue(
     .filter(Boolean)
     .join("\n");
 
-  if (plain.length < 400) {
-    reasons.push("Content too short for actionable broker intelligence");
-  }
+  const isCustomAssignment =
+    opts.campaignType === "custom_prompt" || Boolean(opts.customPrompt?.trim());
 
   let fluffHits = 0;
   for (const phrase of GENERIC_FLUFF_PHRASES) {
@@ -345,9 +486,18 @@ export function evaluateEducationalValue(
     reasons.push("Reads like generic marketing fluff");
   }
 
-  const actionHits = ACTION_SIGNALS.filter((s) => plain.includes(s)).length;
-  if (actionHits < 2) {
-    reasons.push("Missing concrete broker action steps or implementation language");
+  if (isCustomAssignment) {
+    const fidelity = evaluateOperatorPromptFidelity(opts.customPrompt ?? "", rawCombined);
+    reasons.push(...fidelity.reasons);
+  } else if (plain.length < 400) {
+    reasons.push("Content too short for actionable broker intelligence");
+  }
+
+  if (!isCustomAssignment) {
+    const actionHits = ACTION_SIGNALS.filter((s) => plain.includes(s)).length;
+    if (actionHits < 2) {
+      reasons.push("Missing concrete broker action steps or implementation language");
+    }
   }
 
   if (opts.campaignType && ADVANCED_SCENARIO_CAMPAIGN_TYPES.has(opts.campaignType)) {

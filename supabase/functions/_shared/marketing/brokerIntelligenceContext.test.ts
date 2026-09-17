@@ -1,4 +1,4 @@
-import { evaluateEducationalValue } from "./brokerIntelligenceContext.ts";
+import { evaluateEducationalValue, getCampaignTypeIntelligence } from "./brokerIntelligenceContext.ts";
 
 Deno.test("evaluateEducationalValue passes substantive advanced scenario copy", () => {
   const html = `
@@ -75,4 +75,59 @@ Deno.test("evaluateEducationalValue allows asset depletion when the operator pro
     }
   );
   if (!result.passes) throw new Error(`Expected pass when prompt requests AD: ${result.reasons.join(", ")}`);
+});
+
+Deno.test("getCampaignTypeIntelligence does not attach the DSCR playbook to custom prompts", () => {
+  const custom = getCampaignTypeIntelligence("custom_prompt");
+  if (custom.includes("DTI 54%") || custom.includes("ADVANCED STRUCTURING PLAYBOOK")) {
+    throw new Error("Custom prompts must not receive the advanced structuring playbook");
+  }
+  if (!custom.toLowerCase().includes("exclusive content assignment")) {
+    throw new Error("Custom prompt guidance should say the operator prompt is exclusive");
+  }
+
+  const rescue = getCampaignTypeIntelligence("loan_rescue");
+  if (!rescue.includes("ADVANCED STRUCTURING PLAYBOOK")) {
+    throw new Error("Loan rescue should still include the structuring playbook");
+  }
+});
+
+Deno.test("evaluateEducationalValue accepts holiday-hours copy for a custom prompt", () => {
+  const html = `
+    <p>UFF wholesale desk holiday hours: closed Thursday Dec 25 and Friday Dec 26, and Thursday Jan 1.</p>
+    <p>Phones and scenario desk return Friday Jan 2. Submit files before noon Dec 24 if you need a same-week decision.</p>
+  `;
+  const result = evaluateEducationalValue(
+    {
+      email_subject: "Holiday hours: UFF closed Dec 25-26 and Jan 1",
+      preview_text: "Phones back January 2. Submit by noon Dec 24.",
+      email_html: html,
+      email_text: "UFF holiday hours closed Dec 25-26 and Jan 1. Phones back Jan 2.",
+    },
+    {
+      campaignType: "custom_prompt",
+      customPrompt:
+        "Send brokers our holiday hours: closed Dec 25-26 and Jan 1, phones back Jan 2. Submit files by noon Dec 24.",
+    }
+  );
+  if (!result.passes) throw new Error(`Expected holiday hours to pass: ${result.reasons.join(", ")}`);
+});
+
+Deno.test("evaluateEducationalValue rejects a DSCR flyer when the operator asked for holiday hours", () => {
+  const result = evaluateEducationalValue(
+    {
+      email_subject: "Personal DTI 54%. DSCR does not care. Same borrower.",
+      email_html:
+        "<p>Rescue: DSCR on the subject property. Gather leases and a 12-month rent roll. Bank statement backup if self-employed.</p>",
+    },
+    {
+      campaignType: "custom_prompt",
+      customPrompt:
+        "Send brokers our holiday hours: closed Dec 25-26 and Jan 1, phones back Jan 2.",
+    }
+  );
+  if (result.passes) throw new Error("Expected fail when DSCR replaces holiday hours");
+  if (!result.reasons.some((r) => r.toLowerCase().includes("dscr") || r.toLowerCase().includes("operator prompt"))) {
+    throw new Error(`Expected fidelity reason, got: ${result.reasons.join(", ")}`);
+  }
 });

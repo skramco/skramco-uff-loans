@@ -265,7 +265,7 @@ Deno.serve(async (req: Request) => {
               typeof meta.landing_page_url === "string" ? meta.landing_page_url : undefined,
           },
           parseEmailTone(meta.email_tone),
-          typeof meta.funny_word === "string" ? meta.funny_word : undefined
+          typeof meta.custom_prompt === "string" ? meta.custom_prompt : undefined
         );
 
         const updateMap: Record<string, string> = {

@@ -109,6 +109,20 @@ Deno.test("getEmailToneSystemPromptBlock includes edgy override for funny", () =
   if (/funny word/i.test(block)) throw new Error("System block must not require funny word");
 });
 
+Deno.test("funny tone with operator assignment does not require a DSCR rescue", () => {
+  const block = getEmailToneSystemPromptBlock("funny", { operatorAssignment: true });
+  if (block.includes("intricate rescue scenario")) {
+    throw new Error("Funny + custom prompt must not require a rescue scenario");
+  }
+  if (!block.toLowerCase().includes("operator prompt")) {
+    throw new Error("Funny + custom prompt should keep the operator prompt as the topic");
+  }
+  const userBlock = getEmailTonePromptBlock("funny", { operatorAssignment: true });
+  if (userBlock.includes("ran DSCR")) {
+    throw new Error("Funny + custom prompt must not inject DSCR tone examples");
+  }
+});
+
 Deno.test("getEmailToneImageRules returns tone-specific guidance", () => {
   if (!getEmailToneImageRules("funny").includes("content-specific")) {
     throw new Error("Funny image rules expected");
