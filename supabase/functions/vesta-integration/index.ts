@@ -36,7 +36,7 @@ async function getVestaConfig(): Promise<VestaConfig> {
           Deno.env.get("VESTA_PROD_API_URL") ||
           "https://uff.vesta.com/api/v1",
         apiKey: Deno.env.get("VESTA_PROD_API_KEY") || "",
-        apiVersion: Deno.env.get("VESTA_PROD_API_VERSION") || "26.1",
+        apiVersion: Deno.env.get("VESTA_PROD_API_VERSION") || "26.4",
       };
     }
 
@@ -51,7 +51,7 @@ async function getVestaConfig(): Promise<VestaConfig> {
       apiVersion:
         Deno.env.get("VESTA_DEV_API_VERSION") ||
         Deno.env.get("VESTA_API_VERSION") ||
-        "26.1",
+        "26.4",
     };
   } catch {
     return {
@@ -59,7 +59,7 @@ async function getVestaConfig(): Promise<VestaConfig> {
         Deno.env.get("VESTA_API_URL") ||
         "https://uff.beta.vesta.com/api/v1",
       apiKey: Deno.env.get("VESTA_API_KEY") || "",
-      apiVersion: Deno.env.get("VESTA_API_VERSION") || "26.1",
+      apiVersion: Deno.env.get("VESTA_API_VERSION") || "26.4",
     };
   }
 }
