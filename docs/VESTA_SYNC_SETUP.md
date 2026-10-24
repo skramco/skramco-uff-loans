@@ -10,11 +10,13 @@ Set on **all** Vesta-related edge functions (`vesta-sync-worker`, `vesta-integra
 |--------|-------------|
 | `VESTA_DEV_API_KEY` | UFF beta API token |
 | `VESTA_DEV_API_URL` | Optional (default `https://uff.beta.vesta.com/api/v1`) |
-| `VESTA_DEV_API_VERSION` | Optional (default `26.1`) |
+| `VESTA_DEV_API_VERSION` | Optional (default `26.4`). Overrides the code default when set. |
 | `VESTA_PROD_API_KEY` | Production token when using prod |
 | `VESTA_PROD_API_URL` | Optional |
-| `VESTA_PROD_API_VERSION` | Optional |
+| `VESTA_PROD_API_VERSION` | Optional (default `26.4`). Overrides the code default when set. |
 | `VESTA_CRON_SECRET` | Optional bearer for scheduled `vesta-sync-cron` calls |
+
+Vesta rejects a missing or retired `X-Api-Version`. Allowed values are `experimental`, `26.2`, `26.3`, and `26.4`. `26.1` returns HTTP 400 on `GET /loans/by-number/{loanNumber}`. If a secret is still set to `26.1`, update or clear it so the `26.4` default is sent.
 
 Also required: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `ADMIN_PASSWORD`.
 
