@@ -4,6 +4,7 @@ import {
   buildVestaPayloadFromApplication,
   VESTA_MAPPING_VERSION,
 } from "../_shared/buildVestaPayload.ts";
+import { serviceFunctionHeaders } from "../_shared/serviceFunctionAuth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -198,15 +199,10 @@ Deno.serve(async (req: Request) => {
       case "runVestaSyncCron": {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
         const fnUrl = `${supabaseUrl}/functions/v1/vesta-sync-cron`;
         const r = await fetch(fnUrl, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${serviceKey}`,
-            apikey: anonKey,
-            "Content-Type": "application/json",
-          },
+          headers: serviceFunctionHeaders(serviceKey),
           body: "{}",
         });
         const j = await r.json().catch(() => ({}));
@@ -361,16 +357,11 @@ Deno.serve(async (req: Request) => {
 
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
         const fnUrl = `${supabaseUrl}/functions/v1/vesta-sync-worker`;
 
         const workerRes = await fetch(fnUrl, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${serviceKey}`,
-            apikey: anonKey,
-            "Content-Type": "application/json",
-          },
+          headers: serviceFunctionHeaders(serviceKey),
           body: JSON.stringify({ loanId, serviceMode: true }),
         });
         const workerBody = await workerRes.json().catch(() => ({}));
@@ -392,7 +383,6 @@ Deno.serve(async (req: Request) => {
       case "drainVestaSyncQueue": {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
         await supabase.rpc("reset_stuck_vesta_sync_jobs", { p_stale_minutes: 15 });
         await supabase.rpc("backfill_vesta_sync_jobs", { p_limit: 50 });
@@ -428,11 +418,7 @@ Deno.serve(async (req: Request) => {
           try {
             const r = await fetch(fnUrl, {
               method: "POST",
-              headers: {
-                Authorization: `Bearer ${serviceKey}`,
-                apikey: anonKey,
-                "Content-Type": "application/json",
-              },
+              headers: serviceFunctionHeaders(serviceKey),
               body: JSON.stringify({ loanId, serviceMode: true }),
             });
             const j = await r.json().catch(() => ({}));

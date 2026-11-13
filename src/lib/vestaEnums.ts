@@ -45,6 +45,20 @@ export function mapUiLoanPurposeToVesta(ui: unknown): string | undefined {
   return UI_LOAN_PURPOSE_TO_VESTA[key] ?? key;
 }
 
+/**
+ * LoanPurpose is only Purchase | Refinance. Cash-out is a separate field
+ * (RefinanceCashOutDeterminationType).
+ */
+export function mapUiRefinanceCashOutDetermination(
+  ui: unknown
+): 'CashOut' | 'NoOrLimitedCashOut' | undefined {
+  if (typeof ui !== 'string') return undefined;
+  const key = ui.trim();
+  if (key === 'Cash-Out Refinance') return 'CashOut';
+  if (key === 'Refinance') return 'NoOrLimitedCashOut';
+  return undefined;
+}
+
 export function mapUiPropertyTypeToVesta(ui: unknown): string | undefined {
   if (typeof ui !== 'string' || !ui.trim()) return undefined;
   const key = ui.trim();
