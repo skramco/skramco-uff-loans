@@ -88,3 +88,95 @@ export function buildLoanProductFromUiLoanType(
 
   return Object.keys(product).length > 0 ? product : undefined;
 }
+
+function compactEnumKey(ui: unknown): string | undefined {
+  if (typeof ui !== "string") return undefined;
+  const key = ui.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return key || undefined;
+}
+
+const UI_CITIZENSHIP_TO_VESTA: Record<string, string> = {
+  uscitizen: "USCitizen",
+  permanentresident: "PermanentResidentAlien",
+  permanentresidentalien: "PermanentResidentAlien",
+  nonpermanentresident: "NonPermanentResidentAlien",
+  nonpermanentresidentalien: "NonPermanentResidentAlien",
+  nonresidentalien: "NonResidentAlien",
+};
+
+const UI_MARITAL_STATUS_TO_VESTA: Record<string, string> = {
+  married: "Married",
+  separated: "Separated",
+  unmarried: "Unmarried",
+  single: "Unmarried",
+  divorced: "Unmarried",
+  widowed: "Unmarried",
+};
+
+/** Address.occupancyType is housing (Own / Rent), not subject-property usage. */
+const UI_HOUSING_STATUS_TO_VESTA: Record<string, string> = {
+  own: "Own",
+  rent: "Rent",
+  livingrentfree: "NoPrimaryHousingExpense",
+  rentfree: "NoPrimaryHousingExpense",
+  noprimaryhousingexpense: "NoPrimaryHousingExpense",
+};
+
+const UI_OCCUPANCY_TO_VESTA: Record<string, string> = {
+  primaryresidence: "PrimaryResidence",
+  secondhome: "SecondHome",
+  investment: "Investment",
+  investmentproperty: "Investment",
+  other: "Other",
+};
+
+const UI_GIFT_SOURCE_TO_VESTA: Record<string, string> = {
+  communitynonprofit: "CommunityNonProfit",
+  employer: "Employer",
+  federalagency: "FederalAgency",
+  lender: "Lender",
+  localagency: "LocalAgency",
+  nonparentrelative: "NonParentRelative",
+  other: "Other",
+  parent: "Parent",
+  relative: "Relative",
+  religiousnonprofit: "ReligiousNonProfit",
+  stateagency: "StateAgency",
+  unmarriedpartner: "UnmarriedPartner",
+  unrelatedfriend: "UnrelatedFriend",
+  nonoriginatingfinancialinstitution: "NonOriginatingFinancialInstitution",
+};
+
+export function mapUiCitizenshipToVesta(ui: unknown): string | undefined {
+  const key = compactEnumKey(ui);
+  return key ? UI_CITIZENSHIP_TO_VESTA[key] : undefined;
+}
+
+export function mapUiMaritalStatusToVesta(ui: unknown): string | undefined {
+  const key = compactEnumKey(ui);
+  return key ? UI_MARITAL_STATUS_TO_VESTA[key] : undefined;
+}
+
+export function mapUiHousingStatusToVesta(ui: unknown): string | undefined {
+  const key = compactEnumKey(ui);
+  return key ? UI_HOUSING_STATUS_TO_VESTA[key] : undefined;
+}
+
+/** subjectProperty.intendedUsageType (PropertyUsageType). */
+export function mapUiOccupancyToVesta(ui: unknown): string | undefined {
+  const key = compactEnumKey(ui);
+  return key ? UI_OCCUPANCY_TO_VESTA[key] : undefined;
+}
+
+/** Borrower.intentToOccupy. Investment is the only usage that is not occupancy. */
+export function mapUiIntentToOccupy(ui: unknown): boolean | undefined {
+  const usage = mapUiOccupancyToVesta(ui);
+  if (usage === "PrimaryResidence" || usage === "SecondHome") return true;
+  if (usage === "Investment") return false;
+  return undefined;
+}
+
+export function mapUiGiftSourceToVesta(ui: unknown): string | undefined {
+  const key = compactEnumKey(ui);
+  return key ? UI_GIFT_SOURCE_TO_VESTA[key] : undefined;
+}
