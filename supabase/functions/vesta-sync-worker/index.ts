@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { isServiceRoleRequest } from "../_shared/serviceFunctionAuth.ts";
 import {
   computeNextRetryAt,
   getVestaConfig,
@@ -111,7 +112,7 @@ Deno.serve(async (req: Request) => {
   const supabaseService = createClient(supabaseUrl, serviceKey);
   await resetStuckJobs(supabaseService);
 
-  const isServiceCaller = authHeader === `Bearer ${serviceKey}`;
+  const isServiceCaller = isServiceRoleRequest(req, serviceKey);
 
   if (serviceMode) {
     if (!isServiceCaller) {

@@ -1,5 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  isServiceRoleRequest,
+  serviceFunctionHeaders,
+} from "../_shared/serviceFunctionAuth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +21,7 @@ function jsonResponse(data: unknown, status = 200) {
 
 /**
  * Scheduled worker: reset stuck jobs, backfill missing outbox rows, drain queue.
- * Invoke via Supabase cron or external scheduler with service role bearer.
+ * Invoke with the service key on the `apikey` header, or VESTA_CRON_SECRET.
  */
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -31,18 +35,18 @@ Deno.serve(async (req: Request) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const cronSecret = Deno.env.get("VESTA_CRON_SECRET") || "";
   const authHeader = req.headers.get("Authorization") || "";
+  const serviceAuthed = isServiceRoleRequest(req, serviceKey);
 
   if (cronSecret) {
     const token = authHeader.replace(/^Bearer\s+/i, "");
-    if (token !== cronSecret && authHeader !== `Bearer ${serviceKey}`) {
+    if (token !== cronSecret && !serviceAuthed) {
       return jsonResponse({ error: true, message: "Unauthorized" }, 401);
     }
-  } else if (authHeader !== `Bearer ${serviceKey}`) {
+  } else if (!serviceAuthed) {
     return jsonResponse({ error: true, message: "Unauthorized" }, 401);
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
 
   const { data: resetCount } = await supabase.rpc("reset_stuck_vesta_sync_jobs", {
@@ -89,11 +93,7 @@ Deno.serve(async (req: Request) => {
     try {
       const r = await fetch(fnUrl, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${serviceKey}`,
-          apikey: anonKey,
-          "Content-Type": "application/json",
-        },
+        headers: serviceFunctionHeaders(serviceKey),
         body: JSON.stringify({ loanId, serviceMode: true }),
       });
       const j = await r.json().catch(() => ({}));

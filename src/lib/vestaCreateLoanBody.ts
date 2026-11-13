@@ -7,6 +7,7 @@ import {
   buildLoanProductFromUiLoanType,
   mapUiLoanPurposeToVesta,
   mapUiPropertyTypeToVesta,
+  mapUiRefinanceCashOutDetermination,
 } from './vestaEnums';
 
 export const VESTA_LOAN_TYPE = 'Mortgage';
@@ -73,7 +74,11 @@ function buildSubjectPropertyAddress(
   const address: Record<string, unknown> = {};
   if (line) address.line = line;
   if (city) address.city = city;
-  if (state) address.state = state;
+  if (state) {
+    // Address.state is the state name. Two-letter codes belong on stateCode.
+    if (/^[A-Za-z]{2}$/.test(state)) address.stateCode = state.toUpperCase();
+    else address.state = state;
+  }
   if (zipCode) address.zipCode = zipCode;
   return address;
 }
@@ -113,6 +118,9 @@ export function buildVestaCreateLoanHttpBody(
 
   const loanPurpose = mapUiLoanPurposeToVesta(payload.loanPurpose);
   if (loanPurpose) body.loanPurpose = loanPurpose;
+
+  const cashOut = mapUiRefinanceCashOutDetermination(payload.loanPurpose);
+  if (cashOut) body.refinanceCashOutDeterminationType = cashOut;
 
   const loanAmount = toNumber(payload.loanAmount);
   if (loanAmount != null) body.loanAmount = loanAmount;
