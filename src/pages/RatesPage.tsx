@@ -11,6 +11,8 @@ interface RateRow {
   change: string;
   term: number;
   sourceObservationDate: string;
+  dataKind: 'pmms_national_average' | 'illustrative_estimate';
+  rateTypeLabel: string;
   publishedAt: string;
 }
 
@@ -30,24 +32,17 @@ interface RatePayload {
   source: string;
   observationDate: string;
   fetchedAt: string;
+  disclaimer: string;
 }
 
 const fmtCurrency = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 
-const fmtDateTime = (iso?: string) => {
-  if (!iso) return null;
-  const d = new Date(iso);
+const fmtObservationDate = (dateStr?: string) => {
+  if (!dateStr) return null;
+  const d = new Date(`${dateStr}T12:00:00`);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZoneName: 'short',
-  });
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 export default function RatesPage() {
@@ -83,9 +78,9 @@ export default function RatesPage() {
       <section className="bg-gradient-to-b from-gray-900 to-gray-800 text-white py-20 md:py-28">
         <div className="container-wide">
           <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-extrabold mb-5 leading-[1.1]">Today's mortgage rates</h1>
+            <h1 className="text-4xl md:text-5xl font-extrabold mb-5 leading-[1.1]">National mortgage rate benchmarks</h1>
             <p className="text-xl text-gray-300 mb-4">
-              Rates update weekly from the Freddie Mac Primary Mortgage Market Survey and depend on your unique financial profile.
+              Survey and illustrative figures from the Freddie Mac Primary Mortgage Market Survey — not United Fidelity Funding quotes. Your rate depends on your unique financial profile.
             </p>
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <Clock className="w-4 h-4" />
@@ -127,9 +122,11 @@ export default function RatesPage() {
                     <thead>
                       <tr className="border-b border-gray-200 bg-gray-50">
                         <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-4">Product</th>
+                        <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-4">Type</th>
                         <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-4">Rate</th>
                         <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-4">APR</th>
                         <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-4">Est. Payment</th>
+                        <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-4">As of</th>
                         <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-4">Change</th>
                         <th className="px-6 py-4"></th>
                       </tr>
@@ -140,9 +137,23 @@ export default function RatesPage() {
                         return (
                           <tr key={r.key} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4 font-semibold text-gray-900 text-sm">{r.product}</td>
+                            <td className="px-6 py-4 text-xs text-gray-600 max-w-[11rem] leading-snug" title={r.rateTypeLabel}>
+                              {r.dataKind === 'illustrative_estimate' ? (
+                                <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-800 border border-amber-100">
+                                  Illustrative estimate
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-700">
+                                  PMMS national avg.
+                                </span>
+                              )}
+                            </td>
                             <td className="px-6 py-4 text-lg font-bold text-gray-900">{r.rate}%</td>
                             <td className="px-6 py-4 text-sm text-gray-600">{r.apr}%</td>
                             <td className="px-6 py-4 text-sm text-gray-600">{fmtCurrency(r.payment)}/mo</td>
+                            <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
+                              {fmtObservationDate(r.sourceObservationDate) ?? '—'}
+                            </td>
                             <td className="px-6 py-4">
                               <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
                                 changeNum < 0 ? 'bg-green-50 text-green-700' :
@@ -168,8 +179,11 @@ export default function RatesPage() {
                   </table>
                 </div>
               </div>
+              <p className="text-[11px] text-gray-500 mb-4 px-1">
+                {data.disclaimer}
+              </p>
               <p className="text-[11px] text-gray-400 mb-8 px-1">
-                Last published: {lastPublishedLabel || 'Unavailable'}
+                Latest 30-year PMMS observation: {lastPublishedLabel || 'Unavailable'}. Other products show their own source observation dates in the table.
               </p>
 
               {/* Source badge */}
@@ -189,7 +203,7 @@ export default function RatesPage() {
                     {' '}APR assumes {data.assumptions.originationFeePct}% origination plus estimated third-party closing costs of {fmtCurrency(data.assumptions.estimatedClosingCosts)}
                     {' '}({fmtCurrency(data.assumptions.aprEstimatedTotalCosts)} total estimated APR costs).
                     {' '}Your actual rate may differ.
-                    Rates are derived from the Freddie Mac Primary Mortgage Market Survey (PMMS) published weekly and may not reflect intraday market movements.
+                    Direct PMMS rows reflect national survey averages for 30- and 15-year fixed loans. Rows marked &quot;Illustrative estimate&quot; apply typical spreads to those averages for comparison only and are not United Fidelity Funding rate quotes. Survey data may not reflect intraday market movements.
                   </p>
                 </div>
               </div>

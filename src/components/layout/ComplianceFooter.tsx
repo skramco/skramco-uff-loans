@@ -3,6 +3,8 @@
  * Used on /start, /login, /register, /apply, /dashboard, etc.
  * Contains all required multi-state mortgage banker disclosures in a condensed format.
  */
+import { licensedStateAbbreviations, licensedStateCount } from '../../data/stateLicenses';
+
 export default function ComplianceFooter({ className = '' }: { className?: string }) {
   return (
     <div className={`border-t border-gray-200 bg-gray-50/80 ${className}`}>
@@ -68,8 +70,7 @@ export default function ComplianceFooter({ className = '' }: { className?: strin
           </p>
 
           <p>
-            Licensed in 39 states: AL, AZ, AR, CA, CO, FL, GA, ID, IL, IN, IA, KS, KY, LA, ME, MD, MA, MI,
-            MN, MS, MO, NE, NV, NH, NJ, NM, NC, ND, OH, OK, OR, PA, SC, SD, TN, TX, VA, WA, WI. For
+            Licensed in {licensedStateCount} states: {licensedStateAbbreviations.join(', ')}. For
             state-specific licensing details, visit{' '}
             <a
               href="https://www.nmlsconsumeraccess.org/EntityDetails.aspx/COMPANY/34381"

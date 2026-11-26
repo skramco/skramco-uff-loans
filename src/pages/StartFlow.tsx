@@ -6,6 +6,7 @@ import {
   Send, X, Mail, Lock, Loader2, Eye, EyeOff,
 } from 'lucide-react';
 import ComplianceFooter from '../components/layout/ComplianceFooter';
+import { licensedStateCount } from '../data/stateLicenses';
 import { useAuth } from '../contexts/AuthContext';
 import { persistRateFlowLead } from '../lib/rateFlowLead';
 
@@ -785,7 +786,7 @@ function WelcomeSignup({
               <Shield className="w-4 h-4 text-brand-600" />
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-gray-900">Licensed in 39 states</h4>
+              <h4 className="text-sm font-semibold text-gray-900">Licensed in {licensedStateCount} states</h4>
               <p className="text-xs text-gray-500 mt-0.5">NMLS #34381 — a trusted, regulated lender since 2003.</p>
             </div>
           </div>

@@ -1,14 +1,7 @@
+import { licensedStateCount, licensedStateNames } from '../data/stateLicenses';
+
 export default function Footer() {
   const currentYear = new Date().getFullYear();
-
-  const statesLicensed = [
-    'Alabama', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Florida', 'Georgia',
-    'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine',
-    'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri',
-    'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'North Carolina',
-    'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'South Carolina',
-    'South Dakota', 'Tennessee', 'Texas', 'Virginia', 'Washington', 'Wisconsin'
-  ];
 
   return (
     <footer className="bg-gray-900 text-gray-400 py-12 mt-20">
@@ -98,7 +91,7 @@ export default function Footer() {
 
             <p>
               <span className="text-white font-semibold">Corporate Information:</span> United Fidelity Funding Corp,
-              NMLS #34381, operates as a licensed mortgage lender. Licensed in 39 states: {statesLicensed.join(', ')}.
+              NMLS #34381, operates as a licensed mortgage lender. Licensed in {licensedStateCount} states: {licensedStateNames.join(', ')}.
             </p>
 
             <p>

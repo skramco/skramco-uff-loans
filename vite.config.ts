@@ -4,6 +4,7 @@ import {
   processRateFlowSummary,
   CORS_HEADERS as rateFlowSummaryCors,
 } from './netlify/_shared/sendRateFlowSummaryResend';
+import { buildRatesPayload, type FredObservation } from './netlify/functions/_shared/buildFredRatesPayload';
 
 // Shared FRED fetch helper for local dev proxies
 async function fetchFred(seriesId: string, apiKey: string, limit = 2) {
@@ -79,33 +80,37 @@ export default defineConfig(({ mode }) => {
               const apiKey = env.FRED_API_KEY;
               if (!apiKey) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'FRED_API_KEY not set in .env' })); return; }
 
-              const SPREADS: Record<string, { base: string; spread: number; term: number; label: string }> = {
-                '30yr_fixed':  { base: 'MORTGAGE30US', spread: -0.125, term: 360, label: '30-Year Fixed' },
-                '20yr_fixed':  { base: 'MORTGAGE30US', spread: -0.375, term: 240, label: '20-Year Fixed' },
-                '15yr_fixed':  { base: 'MORTGAGE15US', spread: -0.125, term: 180, label: '15-Year Fixed' },
-                '10yr_fixed':  { base: 'MORTGAGE15US', spread: -0.250, term: 120, label: '10-Year Fixed' },
-                '7_1_arm':     { base: 'MORTGAGE30US', spread: -0.500, term: 360, label: '7/1 ARM' },
-                '5_1_arm':     { base: 'MORTGAGE5US',  spread:  0.000, term: 360, label: '5/1 ARM' },
-                'fha_30yr':    { base: 'MORTGAGE30US', spread: -0.500, term: 360, label: 'FHA 30-Year' },
-                'va_30yr':     { base: 'MORTGAGE30US', spread: -0.625, term: 360, label: 'VA 30-Year' },
+              const toObservation = (rows: { date: string; value: number }[] | null): FredObservation | null => {
+                if (!rows?.length) return null;
+                const last = rows[rows.length - 1];
+                const prev = rows.length > 1 ? rows[rows.length - 2] : last;
+                return { current: last.value, previous: prev.value, date: last.date };
               };
-              const LOAN_AMOUNT = 340000, HOME_PRICE = 425000, ORIG_FEE = 1.0, EST_FEES = 3500;
-              const round8 = (n: number) => Math.round(n * 8) / 8;
-              const pmt = (P: number, r: number, n: number) => { const mr = r / 100 / 12; return mr === 0 ? P / n : P * (mr * Math.pow(1 + mr, n)) / (Math.pow(1 + mr, n) - 1); };
-              const calcAPR = (P: number, rate: number, n: number) => { const payment = pmt(P, rate, n); const af = P - (P * ORIG_FEE / 100 + EST_FEES); let apr = rate; for (let i = 0; i < 1000; i++) { const mr = apr / 100 / 12; const pv = payment * (1 - Math.pow(1 + mr, -n)) / mr; if (Math.abs(pv - af) < 0.01) break; apr += pv > af ? 0.0001 : -0.0001; } return Math.round(apr * 1000) / 1000; };
 
-              const [d30, d15, d5] = await Promise.all([fetchFred('MORTGAGE30US', apiKey), fetchFred('MORTGAGE15US', apiKey), fetchFred('MORTGAGE5US', apiKey)]);
-              if (!d30?.length) { res.writeHead(502, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unable to fetch FRED data' })); return; }
-              const latest = (d: any[]) => ({ current: d[d.length - 1].value, previous: d.length > 1 ? d[d.length - 2].value : d[d.length - 1].value, date: d[d.length - 1].date });
-              const fred: Record<string, any> = { MORTGAGE30US: latest(d30), MORTGAGE15US: d15?.length ? latest(d15) : latest(d30), MORTGAGE5US: d5?.length ? latest(d5) : latest(d30) };
+              const [d30, d15, d5] = await Promise.all([
+                fetchFred('MORTGAGE30US', apiKey),
+                fetchFred('MORTGAGE15US', apiKey),
+                fetchFred('MORTGAGE5US', apiKey),
+              ]);
 
-              const rates = Object.entries(SPREADS).map(([key, cfg]) => {
-                const f = fred[cfg.base]; const rate = round8(f.current + cfg.spread); const prev = round8(f.previous + cfg.spread);
-                return { key, product: cfg.label, rate: rate.toFixed(3), apr: calcAPR(LOAN_AMOUNT, rate, cfg.term).toFixed(3), payment: Math.round(pmt(LOAN_AMOUNT, rate, cfg.term)), change: (Math.round((rate - prev) * 1000) / 1000).toFixed(3), term: cfg.term };
-              });
+              const fetchedAt = new Date().toISOString();
+              const payload = buildRatesPayload(
+                {
+                  MORTGAGE30US: toObservation(d30),
+                  MORTGAGE15US: toObservation(d15),
+                  MORTGAGE5US: toObservation(d5),
+                },
+                fetchedAt,
+              );
 
-              const payload = { rates, assumptions: { loanAmount: LOAN_AMOUNT, homePrice: HOME_PRICE, downPaymentPct: Math.round((1 - LOAN_AMOUNT / HOME_PRICE) * 100), creditScore: '740+', occupancy: 'Owner-occupied single-family residence', lockDays: 30 }, source: 'Freddie Mac Primary Mortgage Market Survey via FRED', observationDate: fred.MORTGAGE30US.date, fetchedAt: new Date().toISOString() };
-              res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(payload));
+              if (!payload) {
+                res.writeHead(502, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unable to fetch FRED data' }));
+                return;
+              }
+
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(payload));
             } catch (err: any) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: err.message || 'Internal error' })); }
           });
 
