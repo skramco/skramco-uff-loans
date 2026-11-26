@@ -1,8 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
-  OPS_FOOTER_LINKS,
+  RETAIL_LO_FOOTER_LINKS,
   UFF_EMAIL,
+  WHOLESALE_FOOTER_LINKS,
   buildCtaButton,
   statusBanner,
   wrapUffEmail,
@@ -322,17 +323,25 @@ async function fetchObjectiveConditions(loanId: string): Promise<ConditionItem[]
 
 const companyName = "United Fidelity Funding";
 
-function wrapEmail(heading: string, preheader: string, bodyContent: string, losUrl?: string, buttonLabel?: string): string {
+function siteChrome(channel: Channel): { logoHref: string; footerLinks: typeof RETAIL_LO_FOOTER_LINKS } {
+  if (channel === "Wholesale") {
+    return { logoHref: UFF_EMAIL.wholesaleSiteUrl, footerLinks: WHOLESALE_FOOTER_LINKS };
+  }
+  return { logoHref: UFF_EMAIL.siteUrl, footerLinks: RETAIL_LO_FOOTER_LINKS };
+}
+
+function wrapEmail(channel: Channel, heading: string, preheader: string, bodyContent: string, losUrl?: string, buttonLabel?: string): string {
   const cta = losUrl
     ? buildCtaButton(losUrl, buttonLabel || "Open loan in LOS")
     : "";
+  const chrome = siteChrome(channel);
   return wrapUffEmail({
     heading,
     preheader,
     kicker: "LOAN UPDATE",
     bodyHtml: `${bodyContent}${cta}<p style="font-family:${UFF_EMAIL.font};font-size:15px;color:${UFF_EMAIL.body};margin:24px 0 0;line-height:1.7;">Warm regards,<br><strong style="color:${UFF_EMAIL.ink};">The ${companyName} Team</strong></p>`,
-    logoHref: UFF_EMAIL.portalUrl,
-    footerLinks: OPS_FOOTER_LINKS,
+    logoHref: chrome.logoHref,
+    footerLinks: chrome.footerLinks,
   });
 }
 
@@ -438,7 +447,7 @@ function buildRetailStageChanged(webhook: VestaWebhookPayload, loan: LoanDetails
 
   return {
     subject: `Loan Stage Changed: ${newStage}${loanNumber ? ` \u2014 Loan #${loanNumber}` : ""} \u2014 ${borrowerName}`,
-    html: wrapEmail("Loan Stage Changed", `${borrowerName} \u2192 ${newStage}`, body, losUrl),
+    html: wrapEmail("Retail", "Loan Stage Changed", `${borrowerName} \u2192 ${newStage}`, body, losUrl),
     recipients,
   };
 }
@@ -478,7 +487,7 @@ function buildWholesaleStageChanged(webhook: VestaWebhookPayload, loan: LoanDeta
 
   return {
     subject: `[UFF] Stage Update: ${newStage}${loanNumber ? ` \u2014 Loan #${loanNumber}` : ""} \u2014 ${borrowerName}`,
-    html: wrapEmail("Loan Stage Update", `${borrowerName} \u2192 ${newStage}`, body, losUrl, "Open loan in Pro Portal"),
+    html: wrapEmail("Wholesale", "Loan Stage Update", `${borrowerName} \u2192 ${newStage}`, body, losUrl, "Open loan in Pro Portal"),
     recipients,
   };
 }
@@ -593,7 +602,7 @@ function buildDenyReasonsHtml(reasons: string[]): string {
 
 // ── Shared decision email wrapper (overrides header color) ──
 
-function wrapDecisionEmail(config: DecisionConfig, preheader: string, bodyContent: string, losUrl?: string, buttonLabel?: string): string {
+function wrapDecisionEmail(channel: Channel, config: DecisionConfig, preheader: string, bodyContent: string, losUrl?: string, buttonLabel?: string): string {
   const banner = statusBanner(
     config.heading.toUpperCase(),
     preheader,
@@ -604,13 +613,14 @@ function wrapDecisionEmail(config: DecisionConfig, preheader: string, bodyConten
   const cta = losUrl
     ? buildCtaButton(losUrl, buttonLabel || "Open loan in LOS")
     : "";
+  const chrome = siteChrome(channel);
   return wrapUffEmail({
     heading: config.heading,
     preheader,
     kicker: "UNDERWRITING",
     bodyHtml: `${banner}${bodyContent}${cta}<p style="font-family:${UFF_EMAIL.font};font-size:15px;color:${UFF_EMAIL.body};margin:24px 0 0;line-height:1.7;">Warm regards,<br><strong style="color:${UFF_EMAIL.ink};">The ${companyName} Team</strong></p>`,
-    logoHref: UFF_EMAIL.portalUrl,
-    footerLinks: OPS_FOOTER_LINKS,
+    logoHref: chrome.logoHref,
+    footerLinks: chrome.footerLinks,
   });
 }
 
@@ -664,7 +674,7 @@ function buildRetailUnderwriterDecision(webhook: VestaWebhookPayload, loan: Loan
 
   return {
     subject: `${config.subjectPrefix}${loanNumber ? ` \u2014 Loan #${loanNumber}` : ""} \u2014 ${borrowerName}`,
-    html: wrapDecisionEmail(config, preheader, body, losUrl),
+    html: wrapDecisionEmail("Retail", config, preheader, body, losUrl),
     recipients,
   };
 }
@@ -722,7 +732,7 @@ function buildWholesaleUnderwriterDecision(webhook: VestaWebhookPayload, loan: L
 
   return {
     subject: `[UFF] ${config.subjectPrefix}${loanNumber ? ` \u2014 Loan #${loanNumber}` : ""} \u2014 ${borrowerName}`,
-    html: wrapDecisionEmail(config, preheader, body, losUrl, "Open loan in Pro Portal"),
+    html: wrapDecisionEmail("Wholesale", config, preheader, body, losUrl, "Open loan in Pro Portal"),
     recipients,
   };
 }
