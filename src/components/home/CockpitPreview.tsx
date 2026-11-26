@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Upload, Clock, TrendingDown, Bell } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Upload, Clock, Bell } from 'lucide-react';
 
 export default function CockpitPreview() {
   return (
@@ -30,6 +30,11 @@ export default function CockpitPreview() {
 
           <div className="relative">
             <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+              <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-center">
+                <p className="text-xs font-semibold text-amber-900">
+                  Sample dashboard only — not a quote, rate lock, or closing-time promise.
+                </p>
+              </div>
               <div className="bg-gray-900 px-6 py-4 flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full bg-red-400" />
                 <div className="w-3 h-3 rounded-full bg-yellow-400" />
@@ -45,9 +50,9 @@ export default function CockpitPreview() {
                     <p className="text-xs text-gray-400">per month</p>
                   </div>
                   <div className="bg-gray-50 rounded-xl p-4">
-                    <p className="text-xs text-gray-500 mb-1">Rate Range</p>
+                    <p className="text-xs text-gray-500 mb-1">Illustrative rate range</p>
                     <p className="text-xl font-bold text-gray-900">6.25% - 6.875%</p>
-                    <p className="text-xs text-gray-400">30-yr fixed</p>
+                    <p className="text-xs text-gray-400">30-yr fixed (sample only)</p>
                   </div>
                 </div>
 
@@ -57,9 +62,9 @@ export default function CockpitPreview() {
                     <p className="text-xl font-bold text-gray-900">$14.2k - $18.5k</p>
                   </div>
                   <div className="bg-gray-50 rounded-xl p-4">
-                    <p className="text-xs text-gray-500 mb-1">Timeline</p>
+                    <p className="text-xs text-gray-500 mb-1">Example timeline</p>
                     <p className="text-xl font-bold text-gray-900">~21 days</p>
-                    <p className="text-xs text-gray-400">to close</p>
+                    <p className="text-xs text-gray-400">closing varies by loan</p>
                   </div>
                 </div>
 

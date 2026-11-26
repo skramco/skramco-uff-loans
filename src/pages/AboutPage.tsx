@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Shield, Eye, Users, Award, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { licensedStateCount } from '../data/stateLicenses';
 
 const values = [
   {
@@ -67,7 +68,7 @@ export default function AboutPage() {
             {[
               { value: '20+', label: 'Years in business' },
               { value: '10,000+', label: 'Families served' },
-              { value: '48', label: 'States licensed' },
+              { value: String(licensedStateCount), label: 'States licensed' },
               { value: '4.9/5', label: 'Customer rating' },
             ].map((s) => (
               <div key={s.label} className="text-center bg-white rounded-xl p-6 border border-gray-200">

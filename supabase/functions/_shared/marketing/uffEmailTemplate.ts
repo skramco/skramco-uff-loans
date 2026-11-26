@@ -338,7 +338,7 @@ export function wrapUffEmail(opts: {
               </p>
               <p style="margin:0;font-family:${UFF_EMAIL.font};font-size:11px;line-height:1.6;color:${UFF_EMAIL.muted};">
                 ${UFF_EMAIL.address}<br />
-                Licensed in 39 states. &copy; ${year} ${UFF_EMAIL.companyName} Corp. All rights reserved.
+                Licensed in 40 states. &copy; ${year} ${UFF_EMAIL.companyName} Corp. All rights reserved.
               </p>
             </td>
           </tr>
