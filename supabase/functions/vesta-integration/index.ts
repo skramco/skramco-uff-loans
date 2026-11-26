@@ -1,6 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { postCreateLoan } from "../_shared/vestaCreateLoan.ts";
+import {
+  buildVestaCreateLoanHttpBody,
+  postCreateLoan,
+} from "../_shared/vestaCreateLoan.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -127,16 +130,19 @@ async function handleUpdateLoan(
   }
 
   try {
+    const httpBody = buildVestaCreateLoanHttpBody(
+      (payload ?? {}) as Record<string, unknown>
+    );
     const response = await fetch(
       vestaLoanItemUrl(config.apiUrl, vestaLoanId),
       {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Token ${config.apiKey}`,
           "x-Api-Version": config.apiVersion,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(httpBody),
       }
     );
 
